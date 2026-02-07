@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criado por nid</title>
+    <link rel="stylesheet" href="/style (2).css">
+</head>
+<body>
+    <div class="chat-container">
+        <header>
+            <h1>Chat -NID</h1>
+        </header>
+        <div id="chat-messages" class="messages-area">
+        </div>
+        <form id="chat-form">
+            <input type="text" id="username" placeholder="Seu nome" required>
+            <div class="input-group">
+                <input type="text" id="message-input" placeholder="Digite sua mensagem..." required>
+                <button type="submit">Enviar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // CONFIGURAÇÃO DO FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuiBi8B3Sf6hZfLOYd9Ezl6IXw8NbbF1A",
+            authDomain: "mextill.firebaseapp.com",
+            databaseURL: "https://mextill-default-rtdb.firebaseio.com",
+            projectId: "mextill",
+            storageBucket: "mextill.firebasestorage.app",
+            messagingSenderId: "811140414542",
+            appId: "1:811140414542:web:e695c35ec6d0cdf523571f",
+            measurementId: "G-7D3J6PQVZM"
+        };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const messagesRef = ref(db, 'messages');
+
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const usernameInput = document.getElementById('username');
+        const messagesArea = document.getElementById('chat-messages');
+
+        // Enviar mensagem
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = messageInput.value;
+            const username = usernameInput.value;
+
+            if (message.trim() && username.trim()) {
+                push(messagesRef, {
+                    username: username,
+                    text: message,
+                    timestamp: serverTimestamp()
+                });
+                messageInput.value = '';
+            }
+        });
+
+        // Receber mensagens
+        onChildAdded(messagesRef, (data) => {
+            const msg = data.val();
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            
+            messageElement.innerHTML = `
+                <span class="user">${msg.username}:</span>
+                <span class="text">${msg.text}</span>
+            `;
+            
+            messagesArea.appendChild(messageElement);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        });
+    </script>
+</body>
+</html>
