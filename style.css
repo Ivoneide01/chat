@@ -1,0 +1,124 @@
+body {
+    background-color: #000;
+    color: #ff69b4; /* Hot Pink */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.chat-container {
+    width: 90%;
+    max-width: 500px;
+    height: 80vh;
+    background-color: #1a1a1a;
+    border: 2px solid #ff69b4;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
+}
+
+header {
+    background-color: #ff69b4;
+    color: #000;
+    padding: 15px;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.messages-area {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message {
+    background-color: #2a2a2a;
+    padding: 10px;
+    border-radius: 8px;
+    border-left: 4px solid #ff69b4;
+    word-wrap: break-word;
+}
+
+.message .user {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.8rem;
+    color: #ff85c1;
+}
+
+.message .text {
+    color: #fff;
+}
+
+#chat-form {
+    padding: 20px;
+    background-color: #111;
+    border-top: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#username {
+    background-color: #222;
+    border: 1px solid #ff69b4;
+    color: #fff;
+    padding: 8px;
+    border-radius: 5px;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+#message-input {
+    flex: 1;
+    background-color: #222;
+    border: 1px solid #ff69b4;
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+button {
+    background-color: #ff69b4;
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #ff85c1;
+}
+
+/* Scrollbar styling */
+.messages-area::-webkit-scrollbar {
+    width: 6px;
+}
+
+.messages-area::-webkit-scrollbar-track {
+    background: #111;
+}
+
+.messages-area::-webkit-scrollbar-thumb {
+    background: #ff69b4;
+    border-radius: 10px;
+}
