@@ -91,29 +91,19 @@
         });
 
         // Receber mensagens
-// Receber mensagens
-onChildAdded(messagesRef, (data) => {
-    const msg = data.val();
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-    
-    // 1. Converter o timestamp para o formato de hora (HH:MM)
-    const date = msg.timestamp ? new Date(msg.timestamp) : new Date();
-    const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    // 2. Adicionar o HTML com a nova classe "time"
-    messageElement.innerHTML = `
-        <div class="message-header">
-            <span class="user">${msg.username}:</span>
-            <span class="time">${time}</span>
-        </div>
-        <span class="text">${msg.text}</span>
-    `;
-    
-    messagesArea.appendChild(messageElement);
-    messagesArea.scrollTop = messagesArea.scrollHeight;
-});
-
+        onChildAdded(messagesRef, (data) => {
+            const msg = data.val();
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            
+            messageElement.innerHTML = `
+                <span class="user">${msg.username}:</span>
+                <span class="text">${msg.text}</span>
+            `;
+            
+            messagesArea.appendChild(messageElement);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        });
     </script>
 </body>
 </html>
