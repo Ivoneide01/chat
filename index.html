@@ -25,6 +25,10 @@
 
     <!-- Firebase SDK -->
     <script type="module">
+        // Pedir permissão para notificações
+if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+}
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
@@ -92,32 +96,44 @@ usernameInput.style.opacity = "0.6";
         });
 
         // RECEBER MENSAGENS
-        onChildAdded(messagesRef, (data) => {
-            const msg = data.val();
-            if (!msg) return;
+    onChildAdded(messagesRef, (data) => {
+    const msg = data.val();
+    if (!msg) return;
 
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            
-            let time = "";
-            try {
-                const date = msg.timestamp ? new Date(msg.timestamp) : new Date();
-                time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            } catch (e) {
-                time = "--:--";
-            }
+    // ... (seu código existente de criar o messageElement e converter a hora) ...
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    
+    let time = "";
+    try {
+        const date = msg.timestamp ? new Date(msg.timestamp) : new Date();
+        time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        time = "--:--";
+    }
 
-            messageElement.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
-                    <span class="user" style="margin-bottom: 0; font-weight: bold; font-size: 0.8rem; color: #ff85c1;">${msg.username}:</span>
-                    <span style="font-size: 0.7rem; color: #ff85c1; opacity: 0.7;">${time}</span>
-                </div>
-                <span class="text" style="color: #fff;">${msg.text}</span>
-            `;
-            
-            messagesArea.appendChild(messageElement);
-            messagesArea.scrollTop = messagesArea.scrollHeight;
-        });
+    messageElement.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
+            <span class="user" style="margin-bottom: 0; font-weight: bold; font-size: 0.8rem; color: #ff85c1;">${msg.username}:</span>
+            <span style="font-size: 0.7rem; color: #ff85c1; opacity: 0.7;">${time}</span>
+        </div>
+        <span class="text" style="color: #fff;">${msg.text}</span>
+    `;
+    
+    messagesArea.appendChild(messageElement);
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+
+    // --- NOVIDADE: DISPARAR NOTIFICAÇÃO ---
+    // Só notifica se: 1. Tiver permissão, 2. A página estiver escondida, 3. Não for mensagem sua
+    const isMyMessage = msg.username === usernameInput.value;
+    if (Notification.permission === "granted" && document.hidden && !isMyMessage) {
+        new Notification(`Nova mensagem de ${msg.username}`, {
+            body: msg.text,
+            icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png' // Você pode trocar por um ícone seu
+        } );
+    }
+});
+
     </script>
 </body>
 </html>
