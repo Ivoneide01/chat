@@ -29,8 +29,8 @@
 if (Notification.permission !== "granted") {
     Notification.requestPermission();
 }
-// Carregar o som de notificação (você pode trocar o link por qualquer arquivo .mp3)
-const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3' );
+// som)
+const notificationSound = new Audio('som.mp3' );
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -61,8 +61,8 @@ const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx
         const savedName = localStorage.getItem('chat_username');
         if (savedName) {
     usernameInput.value = savedName;
-    usernameInput.readOnly = true; // Trava o campo se já tiver nome salvo
-    usernameInput.style.opacity = "0.6"; // Opcional: deixa ele com aparência de desativado
+    usernameInput.readOnly = true;
+    usernameInput.style.opacity = "0.6";
 }
 
         // ENVIAR MENSAGEM
@@ -78,7 +78,7 @@ const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx
                 return;
             }
 
-            // --- NOVIDADE: SALVAR NOME NO NAVEGADOR ---
+            //= SALVAR
             localStorage.setItem('chat_username', username);
 usernameInput.readOnly = true; // Trava o campo após o primeiro envio
 usernameInput.style.opacity = "0.6";
@@ -103,7 +103,7 @@ usernameInput.style.opacity = "0.6";
     const msg = data.val();
     if (!msg) return;
 
-    // ... (seu código existente de criar o messageElement e converter a hora) ...
+    // converter a hora) ...
     const messageElement = document.createElement('div');
     messageElement.classList.add('message');
     
@@ -126,8 +126,6 @@ usernameInput.style.opacity = "0.6";
     messagesArea.appendChild(messageElement);
     messagesArea.scrollTop = messagesArea.scrollHeight;
 
-    // --- NOVIDADE: DISPARAR NOTIFICAÇÃO ---
-    // Só notifica se: 1. Tiver permissão, 2. A página estiver escondida, 3. Não for mensagem sua
     const isMyMessage = msg.username === usernameInput.value;
     if (!isMyMessage) {
         notificationSound.play().catch(err => {
@@ -137,7 +135,7 @@ usernameInput.style.opacity = "0.6";
     if (Notification.permission === "granted" && document.hidden && !isMyMessage) {
         new Notification(`Nova mensagem de ${msg.username}`, {
             body: msg.text,
-            icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png' // Você pode trocar por um ícone seu
+            icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png'
         } );
     }
 });
