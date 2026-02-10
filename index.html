@@ -3,18 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criado por nid</title>
+    <title>Chat Rosa e Preto</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="chat-container">
         <header>
-            <h1>Chat</h1>
+            <h1>Chat Amigável</h1>
+            <span id="display-username" style="font-size: 0.8rem; opacity: 0.8;"></span>
         </header>
         <div id="chat-messages" class="messages-area">
+            <!-- Mensagens aparecerão aqui -->
         </div>
         <form id="chat-form">
-            <input type="text" id="username" placeholder="Seu nome" required>
+            <div id="username-container">
+                <input type="text" id="username" placeholder="Seu nome para começar..." required>
+            </div>
             <div class="input-group">
                 <input type="text" id="message-input" placeholder="Digite sua mensagem..." required>
                 <button type="submit">Enviar</button>
@@ -27,7 +31,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // CONFIGURAÇÃO DO FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyBuiBi8B3Sf6hZfLOYd9Ezl6IXw8NbbF1A",
             authDomain: "mextill.firebaseapp.com",
@@ -39,7 +42,6 @@
             measurementId: "G-7D3J6PQVZM"
         };
 
-        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const messagesRef = ref(db, 'messages');
@@ -47,15 +49,38 @@
         const chatForm = document.getElementById('chat-form');
         const messageInput = document.getElementById('message-input');
         const usernameInput = document.getElementById('username');
+        const usernameContainer = document.getElementById('username-container');
+        const displayUsername = document.getElementById('display-username');
         const messagesArea = document.getElementById('chat-messages');
+
+        // Verificar se já existe um nome salvo
+        let savedUsername = localStorage.getItem('chat_username');
+        
+        if (savedUsername) {
+            usernameContainer.style.display = 'none';
+            displayUsername.innerText = `Logado como: ${savedUsername}`;
+        }
 
         // Enviar mensagem
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const message = messageInput.value;
-            const username = usernameInput.value;
+            
+            let username = savedUsername;
+            
+            // Se não tiver nome salvo, pega do input e salva
+            if (!username) {
+                username = usernameInput.value.trim();
+                if (username) {
+                    localStorage.setItem('chat_username', username);
+                    savedUsername = username;
+                    usernameContainer.style.display = 'none';
+                    displayUsername.innerText = `Logado como: ${username}`;
+                }
+            }
 
-            if (message.trim() && username.trim()) {
+            const message = messageInput.value;
+
+            if (message.trim() && username) {
                 push(messagesRef, {
                     username: username,
                     text: message,
