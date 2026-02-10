@@ -29,6 +29,9 @@
 if (Notification.permission !== "granted") {
     Notification.requestPermission();
 }
+// Carregar o som de notificação (você pode trocar o link por qualquer arquivo .mp3)
+const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3' );
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
@@ -126,6 +129,11 @@ usernameInput.style.opacity = "0.6";
     // --- NOVIDADE: DISPARAR NOTIFICAÇÃO ---
     // Só notifica se: 1. Tiver permissão, 2. A página estiver escondida, 3. Não for mensagem sua
     const isMyMessage = msg.username === usernameInput.value;
+    if (!isMyMessage) {
+        notificationSound.play().catch(err => {
+            console.log("O som não pôde tocar automaticamente: ", err);
+        });
+    }
     if (Notification.permission === "granted" && document.hidden && !isMyMessage) {
         new Notification(`Nova mensagem de ${msg.username}`, {
             body: msg.text,
