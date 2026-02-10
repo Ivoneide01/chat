@@ -3,24 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
+    <title>Chat - NID</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="chat-container">
         <header>
-            <h1>Chat em construção</h1>
-            <span id="display-username" style="font-size: 0.8rem; opacity: 0.8;"></span>
+            <h1>Chat</h1>
         </header>
         <div id="chat-messages" class="messages-area">
-            <!-- Mensagens aparecerão aqui -->
+            <!-- As mensagens aparecerão aqui -->
         </div>
-        <form id="chat-form">
-            <div id="username-container">
-                <input type="text" id="username" placeholder="definir nome" required>
-            </div>
+        <form id="chat-form" novalidate>
+            <input type="text" id="username" placeholder="Seu nome">
             <div class="input-group">
-                <input type="text" id="message-input" placeholder="Digite sua mensagem..." required>
+                <input type="text" id="message-input" placeholder="Digite sua mensagem...">
                 <button type="submit">Enviar</button>
             </div>
         </form>
@@ -31,6 +28,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+        // CONFIGURAÇÃO DO FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyBuiBi8B3Sf6hZfLOYd9Ezl6IXw8NbbF1A",
             authDomain: "mextill.firebaseapp.com",
@@ -42,66 +40,56 @@
             measurementId: "G-7D3J6PQVZM"
         };
 
-        const app = initializeApp(firebaseConfig);
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig );
         const db = getDatabase(app);
         const messagesRef = ref(db, 'messages');
 
         const chatForm = document.getElementById('chat-form');
         const messageInput = document.getElementById('message-input');
         const usernameInput = document.getElementById('username');
-        const usernameContainer = document.getElementById('username-container');
-        const displayUsername = document.getElementById('display-username');
         const messagesArea = document.getElementById('chat-messages');
 
-        // Verificar se já existe um nome salvo
-        let savedUsername = localStorage.getItem('chat_username');
-        
-        if (savedUsername) {
-            usernameContainer.style.display = 'none';
-            displayUsername.innerText = `Logado como: ${savedUsername}`;
-        }
-
-        // Enviar mensagem
+        // ENVIAR MENSAGEM
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            let username = savedUsername;
-            
-            // Se não tiver nome salvo, pega do input e salva
+            const message = messageInput.value.trim();
+            const username = usernameInput.value.trim();
+
+            // Validação manual para evitar erros de "not focusable"
             if (!username) {
-                username = usernameInput.value.trim();
-                if (username) {
-                    localStorage.setItem('chat_username', username);
-                    savedUsername = username;
-                    usernameContainer.style.display = 'none';
-                    displayUsername.innerText = `Logado como: ${username}`;
-                }
+                alert("Por favor, digite seu nome.");
+                usernameInput.focus();
+                return;
+            }
+            if (!message) {
+                messageInput.focus();
+                return;
             }
 
-            const message = messageInput.value;
-
-            if (message.trim() && username) {
-                push(messagesRef, {
-                    username: username,
-                    text: message,
-                    timestamp: serverTimestamp()
-                });
-                messageInput.value = '';
-            }
+            push(messagesRef, {
+                username: username,
+                text: message,
+                timestamp: serverTimestamp()
+            });
+            
+            messageInput.value = '';
+            messageInput.focus();
         });
 
-        // Receber mensagens
+        // RECEBER MENSAGENS
         onChildAdded(messagesRef, (data) => {
             const msg = data.val();
-            if (!msg) return; // Segurança: ignora se a mensagem estiver vazia
+            if (!msg) return;
 
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             
-            // Tratamento seguro do timestamp
+            // Tratamento da hora
             let time = "";
             try {
-                // Se o timestamp ainda não chegou do servidor, usa a hora atual do PC
+                // Se o timestamp ainda não foi processado pelo servidor, usa a hora local
                 const date = msg.timestamp ? new Date(msg.timestamp) : new Date();
                 time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             } catch (e) {
@@ -110,16 +98,15 @@
 
             messageElement.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
-                    <span class="user" style="margin-bottom: 0;">${msg.username}:</span>
+                    <span class="user" style="margin-bottom: 0; font-weight: bold; font-size: 0.8rem; color: #ff85c1;">${msg.username}:</span>
                     <span style="font-size: 0.7rem; color: #ff85c1; opacity: 0.7;">${time}</span>
                 </div>
-                <span class="text">${msg.text}</span>
+                <span class="text" style="color: #fff;">${msg.text}</span>
             `;
             
             messagesArea.appendChild(messageElement);
             messagesArea.scrollTop = messagesArea.scrollHeight;
         });
     </script>
-
 </body>
 </html>
