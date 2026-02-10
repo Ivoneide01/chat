@@ -9,7 +9,7 @@
 <body>
     <div class="chat-container">
         <header>
-            <h1>Chat - NID</h1>
+            <h1>Chat</h1>
         </header>
         <div id="chat-messages" class="messages-area">
             <!-- As mensagens aparecerão aqui -->
@@ -53,8 +53,10 @@
         // --- NOVIDADE: CARREGAR NOME SALVO ---
         const savedName = localStorage.getItem('chat_username');
         if (savedName) {
-            usernameInput.value = savedName;
-        }
+    usernameInput.value = savedName;
+    usernameInput.readOnly = true; // Trava o campo se já tiver nome salvo
+    usernameInput.style.opacity = "0.6"; // Opcional: deixa ele com aparência de desativado
+}
 
         // ENVIAR MENSAGEM
         chatForm.addEventListener('submit', (e) => {
@@ -71,6 +73,8 @@
 
             // --- NOVIDADE: SALVAR NOME NO NAVEGADOR ---
             localStorage.setItem('chat_username', username);
+usernameInput.readOnly = true; // Trava o campo após o primeiro envio
+usernameInput.style.opacity = "0.6";
 
             if (!message) {
                 messageInput.focus();
