@@ -91,19 +91,20 @@
         });
 
         // Receber mensagens
-        onChildAdded(messagesRef, (data) => {
-            const msg = data.val();
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            
-            messageElement.innerHTML = `
-                <span class="user">${msg.username}:</span>
-                <span class="text">${msg.text}</span>
-            `;
-            
-            messagesArea.appendChild(messageElement);
-            messagesArea.scrollTop = messagesArea.scrollHeight;
-        });
+ onChildAdded(messagesRef, (data) => {
+    const msg = data.val();
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    
+    messageElement.innerHTML = `
+        <span class="user">${msg.username}:</span>
+        <span class="text">${msg.text}</span>
+    `;
+    
+    messagesArea.appendChild(messageElement);
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+});
+
     </script>
 </body>
 </html>
