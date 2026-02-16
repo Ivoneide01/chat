@@ -11,16 +11,20 @@
     <header>
         <h1>Chat</h1>
     </header>
-    <div id="chat-messages" class="messages-area">
-        <!-- As mensagens aparecerão aqui -->
+ <div id="chat-messages" class="messages-area">
+    <!-- As mensagens aparecerão aqui -->
+</div>
+
+<!-- Indicador "digitando..." -->
+<div id="typing-indicator" style="font-style:italic; opacity:0.7; margin:4px 0;"></div>
+
+<form id="chat-form" novalidate>
+    <input type="text" id="username" placeholder="Seu nome">
+    <div class="input-group">
+        <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+        <button type="submit">Enviar</button>
     </div>
-    <form id="chat-form" novalidate>
-        <input type="text" id="username" placeholder="Seu nome">
-        <div class="input-group">
-            <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-            <button type="submit">Enviar</button>
-        </div>
-    </form>
+</form>
 </div>
 
 <script type="module">
@@ -210,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // =============================
   // 🔥 INDICADOR "DIGITANDO..." MULTI-USUÁRIO
   // =============================
-  const typingIndicator = document.createElement('div');
+  const typingIndicator = document.getElementById('typing-indicator');
   typingIndicator.id = "typing-indicator";
   typingIndicator.style.fontStyle = "italic";
   typingIndicator.style.opacity = "0.7";
