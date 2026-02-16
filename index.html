@@ -73,8 +73,6 @@ const firebaseConfig = {
   messagingSenderId: "811140414542",
   appId: "1:811140414542:web:e695c35ec6d0cdf523571f"
 };
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
 
 
@@ -216,74 +214,11 @@ onChildAdded(messagesRef, (data) => {
 
   let contentHTML = "";
 
-let mediaRecorder;
-let audioChunks = [];
-let stream;
-
-recordBtn.addEventListener("click", async () => {
-
-  if (!currentUser) {
-    alert("Faça login primeiro.");
-    return;
+  if (msg.type === "audio") {
+    contentHTML = `<audio controls src="${msg.audioUrl}"></audio>`;
+  } else {
+    contentHTML = msg.text;
   }
-
-  // Se já estiver gravando → parar
-  if (mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
-    recordBtn.innerHTML = "🎤";
-    return;
-  }
-
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-
-    mediaRecorder.ondataavailable = e => {
-      if (e.data.size > 0) {
-        audioChunks.push(e.data);
-      }
-    };
-
-    mediaRecorder.onstop = async () => {
-
-      const blob = new Blob(audioChunks, { type: "audio/webm" });
-
-      if (blob.size < 1000) {
-        console.log("Áudio muito pequeno, cancelado.");
-        return;
-      }
-
-      const audioRef = storageRef(
-        storage,
-        `audios/${currentUser.uid}_${Date.now()}.webm`
-      );
-
-      await uploadBytes(audioRef, blob);
-      const url = await getDownloadURL(audioRef);
-
-      push(messagesRef, {
-        uid: currentUser.uid,
-        name: currentUser.displayName,
-        photo: currentUser.photoURL,
-        audioUrl: url,
-        type: "audio",
-        timestamp: serverTimestamp()
-      });
-
-      stream.getTracks().forEach(track => track.stop());
-    };
-
-    mediaRecorder.start();
-    recordBtn.innerHTML = "🔴 Parar";
-
-  } catch (err) {
-    console.error("Erro microfone:", err);
-  }
-
-});
-
 
   messageElement.innerHTML = `
     <div style="display:flex; justify-content:space-between;">
