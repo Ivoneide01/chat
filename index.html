@@ -278,12 +278,22 @@ onValue(typingRef, (snapshot) => {
 
   if (otherUsersTyping.length > 0) {
     typingIndicator.textContent = `${otherUsersTyping.join(", ")} está digitando...`;
+
+    // 🔔 Toca som de digitação se a aba estiver visível
+    if (!document.hidden) {
+      typingSound.play().catch(() => {});
+    }
+
   } else {
     typingIndicator.textContent = "";
   }
 });
 
 
+
+
+const typingSound = new Audio('typing.mp3'); // coloque seu arquivo de som
+typingSound.volume = 0.3; // volume baixo, não precisa ser alto
 
   }); // DOMContentLoaded
   
