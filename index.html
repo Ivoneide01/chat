@@ -238,9 +238,55 @@ function getUserColor(username) {
   const color = `hsl(${hash % 360}, 70%, 60%)`; // HSL para cores vibrantes
   return color;
 }
+const typingRef = ref(db, 'typing'); // nó global de digitação
+
+let typingTimeout;
+
+messageInput.addEventListener('input', () => {
+  const username = usernameInput.value.trim();
+  if (!username) return;
+
+  // Marca que o usuário está digitando
+  set(ref(db, `typing/${username}`), true);
+
+  // Limpa timeout antigo
+  clearTimeout(typingTimeout);
+
+  // Se parar de digitar por 2s, remove o status
+  typingTimeout = setTimeout(() => {
+    set(ref(db, `typing/${username}`), false);
+  }, 2000);
+});
+
+const typingIndicator = document.createElement('div');
+typingIndicator.id = "typing-indicator";
+typingIndicator.style.fontStyle = "italic";
+typingIndicator.style.opacity = "0.7";
+typingIndicator.style.margin = "4px 0";
+messagesArea.appendChild(typingIndicator);
+
+onValue(typingRef, (snapshot) => {
+  const typingData = snapshot.val();
+  if (!typingData) {
+    typingIndicator.textContent = "";
+    return;
+  }
+
+  const otherUsersTyping = Object.keys(typingData).filter(user => 
+    user !== usernameInput.value && typingData[user] === true
+  );
+
+  if (otherUsersTyping.length > 0) {
+    typingIndicator.textContent = `${otherUsersTyping.join(", ")} está digitando...`;
+  } else {
+    typingIndicator.textContent = "";
+  }
+});
+
 
 
   }); // DOMContentLoaded
+  
   
 </script>
 
