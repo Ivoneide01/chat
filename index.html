@@ -46,6 +46,14 @@ import {
   onValue,
   update
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { 
+  getAuth, 
+  signInWithPopup, 
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
 
 import { 
   getStorage, 
@@ -65,6 +73,9 @@ const firebaseConfig = {
   messagingSenderId: "811140414542",
   appId: "1:811140414542:web:e695c35ec6d0cdf523571f"
 };
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
 
 
 // 🔥 INICIALIZAÇÃO
