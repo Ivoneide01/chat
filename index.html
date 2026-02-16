@@ -1,32 +1,33 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="chat-container">
-        <header>
-            <h1>Chat</h1>
-        </header>
-        <div id="chat-messages" class="messages-area">
-            <!-- As mensagens aparecerão aqui -->
-        </div>
-        <form id="chat-form" novalidate>
-            <input type="text" id="username" placeholder="Seu nome">
-            <div class="input-group">
-                <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-                <button type="button" id="record-btn">🎤</button>
-                <button type="submit">Enviar</button>
-            </div>
-        </form>
-    </div>
+
+<div class="chat-container">
+<header>
+<h1>Chat</h1>
+</header>
+
+<div id="chat-messages" class="messages-area"></div>
+
+<form id="chat-form" novalidate>
+<input type="text" id="username" placeholder="Seu nome">
+<div class="input-group">
+<input type="text" id="message-input" placeholder="Digite sua mensagem...">
+<button type="button" id="record-btn">🎤</button>
+<button type="submit">Enviar</button>
+</div>
+</form>
+</div>
 
 <script type="module">
 
-// 🔔 Permissão notificação
+// 🔔 Notificação
 if (Notification.permission !== "granted") {
   Notification.requestPermission();
 }
@@ -35,35 +36,12 @@ const notificationSound = new Audio('som.mp3');
 
 // 🔥 IMPORTS
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, serverTimestamp, onDisconnect, onValue, update }
+from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-import { 
-  getDatabase, 
-  ref, 
-  push, 
-  onChildAdded, 
-  serverTimestamp,
-  onDisconnect,
-  onValue,
-  update
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import { 
-  getAuth, 
-  signInWithPopup, 
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-
-import { 
-  getStorage, 
-  ref as storageRef, 
-  uploadBytes, 
-  getDownloadURL 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-
-
-// 🔥 CONFIG FIREBASE
+// 🔥 CONFIG
 const firebaseConfig = {
   apiKey: "SUA_API_KEY_AQUI",
   authDomain: "mextill.firebaseapp.com",
@@ -74,9 +52,7 @@ const firebaseConfig = {
   appId: "1:811140414542:web:e695c35ec6d0cdf523571f"
 };
 
-
-
-// 🔥 INICIALIZAÇÃO
+// 🔥 INIT
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
@@ -84,7 +60,7 @@ const storage = getStorage(app);
 const messagesRef = ref(db, 'messages');
 const connectedRef = ref(db, ".info/connected");
 
-// 🔹 DOM
+// DOM
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
 const usernameInput = document.getElementById('username');
@@ -93,17 +69,12 @@ const recordBtn = document.getElementById('record-btn');
 
 let typingTimeout;
 
-
-// ========================================
-// 🔥 ATIVAR STATUS ONLINE REAL
-// ========================================
+// ================= ONLINE =================
 function activateUserStatus(username) {
-
   const userStatusRef = ref(db, 'users/' + username);
 
   onValue(connectedRef, (snap) => {
     if (snap.val() === true) {
-
       update(userStatusRef, {
         online: true,
         lastSeen: serverTimestamp(),
@@ -119,10 +90,7 @@ function activateUserStatus(username) {
   });
 }
 
-
-// ========================================
-// 🔥 CARREGAR NOME SALVO
-// ========================================
+// ================= NOME SALVO =================
 const savedName = localStorage.getItem('chat_username');
 
 if (savedName) {
@@ -132,21 +100,14 @@ if (savedName) {
   activateUserStatus(savedName);
 }
 
-
-// ========================================
-// 🔥 DIGITAÇÃO
-// ========================================
+// ================= DIGITAÇÃO =================
 messageInput.addEventListener("input", () => {
-
   const username = usernameInput.value.trim();
   if (!username) return;
 
   const userRef = ref(db, 'users/' + username);
 
-  update(userRef, {
-    typing: true,
-    online: true
-  });
+  update(userRef, { typing: true, online: true });
 
   clearTimeout(typingTimeout);
 
@@ -155,10 +116,7 @@ messageInput.addEventListener("input", () => {
   }, 1500);
 });
 
-
-// ========================================
-// 🔥 ENVIAR TEXTO
-// ========================================
+// ================= ENVIAR TEXTO =================
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
 
@@ -180,7 +138,7 @@ chatForm.addEventListener('submit', (e) => {
   }
 
   push(messagesRef, {
-    username: username,
+    username,
     text: message,
     type: "text",
     timestamp: serverTimestamp()
@@ -191,10 +149,7 @@ chatForm.addEventListener('submit', (e) => {
   messageInput.value = '';
 });
 
-
-// ========================================
-// 🔥 RECEBER MENSAGENS (SUPORTE ÁUDIO)
-// ========================================
+// ================= RECEBER =================
 onChildAdded(messagesRef, (data) => {
 
   const msg = data.val();
@@ -206,19 +161,12 @@ onChildAdded(messagesRef, (data) => {
   let time = "--:--";
   if (msg.timestamp) {
     const date = new Date(msg.timestamp);
-    time = date.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  let contentHTML = "";
-
-  if (msg.type === "audio") {
-    contentHTML = `<audio controls src="${msg.audioUrl}"></audio>`;
-  } else {
-    contentHTML = msg.text;
-  }
+  let contentHTML = msg.type === "audio"
+    ? `<audio controls src="${msg.audioUrl}"></audio>`
+    : msg.text;
 
   messageElement.innerHTML = `
     <div style="display:flex; justify-content:space-between;">
@@ -226,7 +174,6 @@ onChildAdded(messagesRef, (data) => {
         <span style="font-weight:bold; color:#ff85c1;">
           ${msg.username}
         </span>
-        <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
       </div>
       <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
     </div>
@@ -237,20 +184,23 @@ onChildAdded(messagesRef, (data) => {
   messagesArea.scrollTop = messagesArea.scrollHeight;
 });
 
-
-// ========================================
-// 🎤 GRAVAÇÃO ESTILO WHATSAPP
-// ========================================
+// ================= 🎤 ÁUDIO ESTÁVEL =================
 let mediaRecorder;
 let audioChunks = [];
-let recordingStart;
 let stream;
 
-async function startRecording() {
+recordBtn.addEventListener("click", async () => {
 
   const username = usernameInput.value.trim();
   if (!username) {
     alert("Digite seu nome primeiro.");
+    return;
+  }
+
+  // Se já estiver gravando → parar
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    recordBtn.innerHTML = "🎤";
     return;
   }
 
@@ -259,71 +209,57 @@ async function startRecording() {
 
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
-    recordingStart = Date.now();
 
     mediaRecorder.ondataavailable = e => {
-      audioChunks.push(e.data);
+      if (e.data.size > 0) {
+        audioChunks.push(e.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+
+      try {
+
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+
+        if (blob.size < 1000) {
+          console.log("Áudio muito curto.");
+          return;
+        }
+
+        const audioFileRef = storageRef(
+          storage,
+          `audios/${username}_${Date.now()}.webm`
+        );
+
+        await uploadBytes(audioFileRef, blob);
+        const downloadURL = await getDownloadURL(audioFileRef);
+
+        push(messagesRef, {
+          username,
+          audioUrl: downloadURL,
+          type: "audio",
+          timestamp: serverTimestamp()
+        });
+
+      } catch (error) {
+        console.error("Erro upload:", error);
+        alert("Erro ao enviar áudio. Veja o console.");
+      }
+
+      stream.getTracks().forEach(track => track.stop());
     };
 
     mediaRecorder.start();
-    recordBtn.innerHTML = "🔴 Gravando...";
+    recordBtn.innerHTML = "🔴 Parar";
+
   } catch (err) {
+    console.error("Erro microfone:", err);
     alert("Permissão de microfone negada.");
   }
-}
 
-async function stopRecording() {
-
-  if (!mediaRecorder) return;
-
-  mediaRecorder.stop();
-
-  mediaRecorder.onstop = async () => {
-
-    const duration = (Date.now() - recordingStart) / 1000;
-
-    if (duration < 1) {
-      recordBtn.innerHTML = "🎤";
-      stream.getTracks().forEach(track => track.stop());
-      return;
-    }
-
-    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-
-    const username = usernameInput.value.trim();
-
-    const audioFileRef = storageRef(
-      storage,
-      `audios/${username}_${Date.now()}.webm`
-    );
-
-    await uploadBytes(audioFileRef, audioBlob);
-    const downloadURL = await getDownloadURL(audioFileRef);
-
-    push(messagesRef, {
-      username,
-      audioUrl: downloadURL,
-      type: "audio",
-      timestamp: serverTimestamp()
-    });
-
-    recordBtn.innerHTML = "🎤";
-    stream.getTracks().forEach(track => track.stop());
-  };
-}
-
-// Desktop
-recordBtn.addEventListener("mousedown", startRecording);
-recordBtn.addEventListener("mouseup", stopRecording);
-recordBtn.addEventListener("mouseleave", stopRecording);
-
-// Mobile
-recordBtn.addEventListener("touchstart", startRecording);
-recordBtn.addEventListener("touchend", stopRecording);
+});
 
 </script>
-
-
-
 </body>
 </html>
