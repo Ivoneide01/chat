@@ -21,8 +21,15 @@ import {
   update
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+import { 
+  getStorage, 
+  ref as storageRef, 
+  uploadBytes, 
+  getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-// 🔥 CONFIG FIREBASE (MANTENHA SUA CONFIG ORIGINAL)
+
+// 🔥 CONFIG FIREBASE
 const firebaseConfig = {
   apiKey: "SUA_API_KEY_AQUI",
   authDomain: "mextill.firebaseapp.com",
@@ -37,6 +44,7 @@ const firebaseConfig = {
 // 🔥 INICIALIZAÇÃO
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 const messagesRef = ref(db, 'messages');
 const connectedRef = ref(db, ".info/connected");
@@ -46,6 +54,7 @@ const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
 const usernameInput = document.getElementById('username');
 const messagesArea = document.getElementById('chat-messages');
+const recordBtn = document.getElementById('record-btn');
 
 let typingTimeout;
 
@@ -90,7 +99,7 @@ if (savedName) {
 
 
 // ========================================
-// 🔥 DETECTAR DIGITAÇÃO
+// 🔥 DIGITAÇÃO
 // ========================================
 messageInput.addEventListener("input", () => {
 
@@ -99,7 +108,6 @@ messageInput.addEventListener("input", () => {
 
   const userRef = ref(db, 'users/' + username);
 
-  // Marca digitando
   update(userRef, {
     typing: true,
     online: true
@@ -108,15 +116,13 @@ messageInput.addEventListener("input", () => {
   clearTimeout(typingTimeout);
 
   typingTimeout = setTimeout(() => {
-    update(userRef, {
-      typing: false
-    });
+    update(userRef, { typing: false });
   }, 1500);
 });
 
 
 // ========================================
-// 🔥 ENVIAR MENSAGEM
+// 🔥 ENVIAR TEXTO
 // ========================================
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -141,20 +147,18 @@ chatForm.addEventListener('submit', (e) => {
   push(messagesRef, {
     username: username,
     text: message,
+    type: "text",
     timestamp: serverTimestamp()
   });
 
-  // Parar digitando ao enviar
-  update(ref(db, 'users/' + username), {
-    typing: false
-  });
+  update(ref(db, 'users/' + username), { typing: false });
 
   messageInput.value = '';
 });
 
 
 // ========================================
-// 🔥 RECEBER MENSAGENS
+// 🔥 RECEBER MENSAGENS (SUPORTE ÁUDIO)
 // ========================================
 onChildAdded(messagesRef, (data) => {
 
@@ -173,62 +177,113 @@ onChildAdded(messagesRef, (data) => {
     });
   }
 
+  let contentHTML = "";
+
+  if (msg.type === "audio") {
+    contentHTML = `<audio controls src="${msg.audioUrl}"></audio>`;
+  } else {
+    contentHTML = msg.text;
+  }
+
   messageElement.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+    <div style="display:flex; justify-content:space-between;">
       <div>
-        <span class="user" style="font-weight:bold; color:#ff85c1;">
+        <span style="font-weight:bold; color:#ff85c1;">
           ${msg.username}
         </span>
         <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
       </div>
       <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
     </div>
-    <div style="color:#fff;">${msg.text}</div>
+    <div style="color:#fff;">${contentHTML}</div>
   `;
 
   messagesArea.appendChild(messageElement);
   messagesArea.scrollTop = messagesArea.scrollHeight;
-
-  const isMyMessage = msg.username === usernameInput.value;
-
-  if (!isMyMessage) {
-    notificationSound.play().catch(() => {});
-  }
-
-  if (Notification.permission === "granted" && document.hidden && !isMyMessage) {
-    new Notification(`Nova mensagem de ${msg.username}`, {
-      body: msg.text
-    });
-  }
-
-  // ========================================
-  // 🔥 STATUS + DIGITANDO
-  // ========================================
-  const statusRef = ref(db, 'users/' + msg.username);
-
-  onValue(statusRef, (snapshot) => {
-
-    const userData = snapshot.val();
-    const statusDiv = messageElement.querySelector(".status");
-
-    if (!userData) return;
-
-    if (userData.typing && !isMyMessage) {
-      statusDiv.innerHTML = "✍️ Digitando...";
-    }
-    else if (userData.online) {
-      statusDiv.innerHTML = "🟢 Online";
-    }
-    else if (userData.lastSeen) {
-      const date = new Date(userData.lastSeen);
-      statusDiv.innerHTML = "Visto às " + date.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-
-  });
-
 });
+
+
+// ========================================
+// 🎤 GRAVAÇÃO ESTILO WHATSAPP
+// ========================================
+let mediaRecorder;
+let audioChunks = [];
+let recordingStart;
+let stream;
+
+async function startRecording() {
+
+  const username = usernameInput.value.trim();
+  if (!username) {
+    alert("Digite seu nome primeiro.");
+    return;
+  }
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    recordingStart = Date.now();
+
+    mediaRecorder.ondataavailable = e => {
+      audioChunks.push(e.data);
+    };
+
+    mediaRecorder.start();
+    recordBtn.innerHTML = "🔴 Gravando...";
+  } catch (err) {
+    alert("Permissão de microfone negada.");
+  }
+}
+
+async function stopRecording() {
+
+  if (!mediaRecorder) return;
+
+  mediaRecorder.stop();
+
+  mediaRecorder.onstop = async () => {
+
+    const duration = (Date.now() - recordingStart) / 1000;
+
+    if (duration < 1) {
+      recordBtn.innerHTML = "🎤";
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+
+    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+
+    const username = usernameInput.value.trim();
+
+    const audioFileRef = storageRef(
+      storage,
+      `audios/${username}_${Date.now()}.webm`
+    );
+
+    await uploadBytes(audioFileRef, audioBlob);
+    const downloadURL = await getDownloadURL(audioFileRef);
+
+    push(messagesRef, {
+      username,
+      audioUrl: downloadURL,
+      type: "audio",
+      timestamp: serverTimestamp()
+    });
+
+    recordBtn.innerHTML = "🎤";
+    stream.getTracks().forEach(track => track.stop());
+  };
+}
+
+// Desktop
+recordBtn.addEventListener("mousedown", startRecording);
+recordBtn.addEventListener("mouseup", stopRecording);
+recordBtn.addEventListener("mouseleave", stopRecording);
+
+// Mobile
+recordBtn.addEventListener("touchstart", startRecording);
+recordBtn.addEventListener("touchend", stopRecording);
 
 </script>
