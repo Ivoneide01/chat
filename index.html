@@ -190,18 +190,26 @@ const firebaseConfig = {
         });
       }
 
-      messageElement.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-          <div>
-            <span class="user" style="font-weight:bold; color:#ff85c1;">
-              ${msg.username}
-            </span>
-            <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
-          </div>
-          <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
-        </div>
-        <div style="color:#fff;">${msg.text}</div>
-      `;
+const userColor = getUserColor(msg.username);
+
+messageElement.innerHTML = `
+  <div style="display:flex; justify-content:space-between; align-items:baseline;">
+    <div>
+      <span class="user" style="font-weight:bold; color:${userColor};">
+        ${msg.username}
+      </span>
+      <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
+    </div>
+    <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
+  </div>
+  <div style="color:#fff;">${msg.text}</div>
+`;
+
+messageElement.style.borderLeft = `4px solid ${userColor}`;
+messageElement.style.paddingLeft = "8px";
+messageElement.style.marginBottom = "6px";
+
+
 
       messagesArea.appendChild(messageElement);
       messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
@@ -221,8 +229,19 @@ const firebaseConfig = {
       monitorUserStatus(msg.username, statusDiv);
 
     });
+    // Função para gerar cor consistente a partir do nome do usuário
+function getUserColor(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const color = `hsl(${hash % 360}, 70%, 60%)`; // HSL para cores vibrantes
+  return color;
+}
+
 
   }); // DOMContentLoaded
+  
 </script>
 
 </body>
