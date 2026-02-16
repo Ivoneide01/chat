@@ -8,6 +8,9 @@
 </head>
 <body>
 
+<button id="login-btn">Entrar com Google</button>
+<button id="logout-btn" style="display:none;">Sair</button>
+
 <div class="chat-container">
 <header>
 <h1>Chat</h1>
@@ -15,8 +18,7 @@
 
 <div id="chat-messages" class="messages-area"></div>
 
-<form id="chat-form" novalidate>
-<input type="text" id="username" placeholder="Seu nome">
+<form id="chat-form">
 <div class="input-group">
 <input type="text" id="message-input" placeholder="Digite sua mensagem...">
 <button type="button" id="record-btn">🎤</button>
@@ -27,19 +29,25 @@
 
 <script type="module">
 
-// 🔔 Notificação
-if (Notification.permission !== "granted") {
-  Notification.requestPermission();
-}
-
-const notificationSound = new Audio('som.mp3');
-
 // 🔥 IMPORTS
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, serverTimestamp, onDisconnect, onValue, update }
+import { getDatabase, ref, push, onChildAdded, serverTimestamp }
 from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
-from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 // 🔥 CONFIG
 const firebaseConfig = {
@@ -55,149 +63,104 @@ const firebaseConfig = {
 // 🔥 INIT
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 const storage = getStorage(app);
+const provider = new GoogleAuthProvider();
 
-const messagesRef = ref(db, 'messages');
-const connectedRef = ref(db, ".info/connected");
+const messagesRef = ref(db, "messages");
 
 // DOM
-const chatForm = document.getElementById('chat-form');
-const messageInput = document.getElementById('message-input');
-const usernameInput = document.getElementById('username');
-const messagesArea = document.getElementById('chat-messages');
-const recordBtn = document.getElementById('record-btn');
+const loginBtn = document.getElementById("login-btn");
+const logoutBtn = document.getElementById("logout-btn");
+const chatForm = document.getElementById("chat-form");
+const messageInput = document.getElementById("message-input");
+const messagesArea = document.getElementById("chat-messages");
+const recordBtn = document.getElementById("record-btn");
 
-let typingTimeout;
+let currentUser = null;
 
-// ================= ONLINE =================
-function activateUserStatus(username) {
-  const userStatusRef = ref(db, 'users/' + username);
+// ================= LOGIN =================
+loginBtn.onclick = async () => {
+  await signInWithPopup(auth, provider);
+};
 
-  onValue(connectedRef, (snap) => {
-    if (snap.val() === true) {
-      update(userStatusRef, {
-        online: true,
-        lastSeen: serverTimestamp(),
-        typing: false
-      });
+logoutBtn.onclick = async () => {
+  await signOut(auth);
+};
 
-      onDisconnect(userStatusRef).update({
-        online: false,
-        lastSeen: serverTimestamp(),
-        typing: false
-      });
-    }
-  });
-}
-
-// ================= NOME SALVO =================
-const savedName = localStorage.getItem('chat_username');
-
-if (savedName) {
-  usernameInput.value = savedName;
-  usernameInput.readOnly = true;
-  usernameInput.style.opacity = "0.6";
-  activateUserStatus(savedName);
-}
-
-// ================= DIGITAÇÃO =================
-messageInput.addEventListener("input", () => {
-  const username = usernameInput.value.trim();
-  if (!username) return;
-
-  const userRef = ref(db, 'users/' + username);
-
-  update(userRef, { typing: true, online: true });
-
-  clearTimeout(typingTimeout);
-
-  typingTimeout = setTimeout(() => {
-    update(userRef, { typing: false });
-  }, 1500);
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-block";
+  } else {
+    currentUser = null;
+    loginBtn.style.display = "inline-block";
+    logoutBtn.style.display = "none";
+  }
 });
 
 // ================= ENVIAR TEXTO =================
-chatForm.addEventListener('submit', (e) => {
+chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  const message = messageInput.value.trim();
-  const username = usernameInput.value.trim();
-
-  if (!username) {
-    alert("Digite seu nome.");
+  if (!currentUser) {
+    alert("Faça login primeiro.");
     return;
   }
 
+  const message = messageInput.value.trim();
   if (!message) return;
 
-  if (!savedName) {
-    localStorage.setItem('chat_username', username);
-    usernameInput.readOnly = true;
-    usernameInput.style.opacity = "0.6";
-    activateUserStatus(username);
-  }
-
   push(messagesRef, {
-    username,
+    uid: currentUser.uid,
+    name: currentUser.displayName,
+    photo: currentUser.photoURL,
     text: message,
     type: "text",
     timestamp: serverTimestamp()
   });
 
-  update(ref(db, 'users/' + username), { typing: false });
-
-  messageInput.value = '';
+  messageInput.value = "";
 });
 
 // ================= RECEBER =================
-onChildAdded(messagesRef, (data) => {
+onChildAdded(messagesRef, (snapshot) => {
 
-  const msg = data.val();
+  const msg = snapshot.val();
   if (!msg) return;
 
-  const messageElement = document.createElement('div');
-  messageElement.classList.add('message');
+  const messageElement = document.createElement("div");
+  messageElement.classList.add("message");
 
-  let time = "--:--";
-  if (msg.timestamp) {
-    const date = new Date(msg.timestamp);
-    time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  let contentHTML = msg.type === "audio"
+  let content = msg.type === "audio"
     ? `<audio controls src="${msg.audioUrl}"></audio>`
     : msg.text;
 
   messageElement.innerHTML = `
-    <div style="display:flex; justify-content:space-between;">
-      <div>
-        <span style="font-weight:bold; color:#ff85c1;">
-          ${msg.username}
-        </span>
-      </div>
-      <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <img src="${msg.photo}" width="30" style="border-radius:50%">
+      <strong>${msg.name}</strong>
     </div>
-    <div style="color:#fff;">${contentHTML}</div>
+    <div>${content}</div>
   `;
 
   messagesArea.appendChild(messageElement);
   messagesArea.scrollTop = messagesArea.scrollHeight;
 });
 
-// ================= 🎤 ÁUDIO ESTÁVEL =================
+// ================= 🎤 ÁUDIO =================
 let mediaRecorder;
 let audioChunks = [];
 let stream;
 
 recordBtn.addEventListener("click", async () => {
 
-  const username = usernameInput.value.trim();
-  if (!username) {
-    alert("Digite seu nome primeiro.");
+  if (!currentUser) {
+    alert("Faça login primeiro.");
     return;
   }
 
-  // Se já estiver gravando → parar
   if (mediaRecorder && mediaRecorder.state === "recording") {
     mediaRecorder.stop();
     recordBtn.innerHTML = "🎤";
@@ -211,9 +174,7 @@ recordBtn.addEventListener("click", async () => {
     audioChunks = [];
 
     mediaRecorder.ondataavailable = e => {
-      if (e.data.size > 0) {
-        audioChunks.push(e.data);
-      }
+      if (e.data.size > 0) audioChunks.push(e.data);
     };
 
     mediaRecorder.onstop = async () => {
@@ -222,29 +183,27 @@ recordBtn.addEventListener("click", async () => {
 
         const blob = new Blob(audioChunks, { type: "audio/webm" });
 
-        if (blob.size < 1000) {
-          console.log("Áudio muito curto.");
-          return;
-        }
+        if (blob.size < 1000) return;
 
-        const audioFileRef = storageRef(
+        const audioRef = storageRef(
           storage,
-          `audios/${username}_${Date.now()}.webm`
+          `audios/${currentUser.uid}_${Date.now()}.webm`
         );
 
-        await uploadBytes(audioFileRef, blob);
-        const downloadURL = await getDownloadURL(audioFileRef);
+        await uploadBytes(audioRef, blob);
+        const url = await getDownloadURL(audioRef);
 
         push(messagesRef, {
-          username,
-          audioUrl: downloadURL,
+          uid: currentUser.uid,
+          name: currentUser.displayName,
+          photo: currentUser.photoURL,
+          audioUrl: url,
           type: "audio",
           timestamp: serverTimestamp()
         });
 
       } catch (error) {
         console.error("Erro upload:", error);
-        alert("Erro ao enviar áudio. Veja o console.");
       }
 
       stream.getTracks().forEach(track => track.stop());
@@ -255,7 +214,6 @@ recordBtn.addEventListener("click", async () => {
 
   } catch (err) {
     console.error("Erro microfone:", err);
-    alert("Permissão de microfone negada.");
   }
 
 });
