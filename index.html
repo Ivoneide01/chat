@@ -1,158 +1,30 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat Firebase</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0f0f0f;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.chat-container {
-  width: 400px;
-  height: 650px;
-  background: #111;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 2px solid #14b8a6;
-}
-
-header {
-  background: #14b8a6;
-  color: black;
-  padding: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-header h1 {
-  margin: 0;
-  font-size: 20px;
-}
-
-header div {
-  display: flex;
-  gap: 8px;
-}
-
-button {
-  background: #14b8a6;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.messages-area {
-  flex: 1;
-  padding: 10px;
-  overflow-y: auto;
-}
-
-.message {
-  background: #2a2a2a;
-  padding: 10px;
-  border-radius: 12px;
-  margin-bottom: 10px;
-  color: white;
-}
-
-.message-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 5px;
-}
-
-.message img {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-}
-
-form {
-  padding: 10px;
-  background: #1a1a1a;
-}
-
-.input-group {
-  display: flex;
-  gap: 5px;
-}
-
-input {
-  flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  border: none;
-  outline: none;
-}
-
-audio {
-  width: 100%;
-  margin-top: 5px;
-}
-</style>
-</head>
-<body>
-
-<div class="chat-container">
-
-  <header>
-    <h1>Chat</h1>
-    <div>
-      <button id="login-btn">Entrar</button>
-      <button id="logout-btn" style="display:none;">Sair</button>
-    </div>
-  </header>
-
-  <div id="chat-messages" class="messages-area"></div>
-
-  <form id="chat-form">
-    <div class="input-group">
-      <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-      <button type="button" id="record-btn">🎤</button>
-      <button type="submit">Enviar</button>
-    </div>
-  </form>
-
-</div>
-
 <script type="module">
 
+// 🔔 Permissão para notificações
+if (Notification.permission !== "granted") {
+  Notification.requestPermission();
+}
+
+const notificationSound = new Audio('som.mp3');
+
+// 🔥 IMPORTS FIREBASE
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, serverTimestamp }
-from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { 
+  getDatabase, 
+  ref, 
+  push, 
+  onChildAdded, 
+  serverTimestamp,
+  set,
+  onDisconnect,
+  onValue
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
+// 🔥 CONFIG FIREBASE
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY_AQUI",
+  apiKey: "SUA_API_KEY",
   authDomain: "mextill.firebaseapp.com",
   databaseURL: "https://mextill-default-rtdb.firebaseio.com",
   projectId: "mextill",
@@ -161,146 +33,165 @@ const firebaseConfig = {
   appId: "1:811140414542:web:e695c35ec6d0cdf523571f"
 };
 
+// 🔥 INICIALIZAR
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const provider = new GoogleAuthProvider();
 
-const messagesRef = ref(db, "messages");
+const messagesRef = ref(db, 'messages');
+const connectedRef = ref(db, ".info/connected");
 
-const loginBtn = document.getElementById("login-btn");
-const logoutBtn = document.getElementById("logout-btn");
-const chatForm = document.getElementById("chat-form");
-const messageInput = document.getElementById("message-input");
-const messagesArea = document.getElementById("chat-messages");
-const recordBtn = document.getElementById("record-btn");
 
-let currentUser = null;
+// 🔹 ELEMENTOS DOM
+const chatForm = document.getElementById('chat-form');
+const messageInput = document.getElementById('message-input');
+const usernameInput = document.getElementById('username');
+const messagesArea = document.getElementById('chat-messages');
 
-loginBtn.onclick = async () => {
-  await signInWithPopup(auth, provider);
-};
 
-logoutBtn.onclick = async () => {
-  await signOut(auth);
-};
+// =============================
+// 🔥 ATIVAR STATUS ONLINE REAL
+// =============================
+function activateUserStatus(username) {
 
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUser = user;
-    loginBtn.style.display = "none";
-    logoutBtn.style.display = "inline-block";
-  } else {
-    currentUser = null;
-    loginBtn.style.display = "inline-block";
-    logoutBtn.style.display = "none";
-  }
-});
+  const userStatusRef = ref(db, 'users/' + username);
 
-chatForm.addEventListener("submit", (e) => {
+  onValue(connectedRef, (snap) => {
+    if (snap.val() === true) {
+
+      // Marca online
+      set(userStatusRef, {
+        online: true,
+        lastSeen: serverTimestamp()
+      });
+
+      // Quando desconectar
+      onDisconnect(userStatusRef).update({
+        online: false,
+        lastSeen: serverTimestamp()
+      });
+    }
+  });
+}
+
+
+// =============================
+// 🔥 CARREGAR NOME SALVO
+// =============================
+const savedName = localStorage.getItem('chat_username');
+
+if (savedName) {
+  usernameInput.value = savedName;
+  usernameInput.readOnly = true;
+  usernameInput.style.opacity = "0.6";
+  activateUserStatus(savedName);
+}
+
+
+// =============================
+// 🔥 ENVIAR MENSAGEM
+// =============================
+chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
 
-  if (!currentUser) {
-    alert("Faça login primeiro.");
+  const message = messageInput.value.trim();
+  const username = usernameInput.value.trim();
+
+  if (!username) {
+    alert("Por favor, digite seu nome.");
     return;
   }
 
-  const message = messageInput.value.trim();
   if (!message) return;
 
+  // Salvar nome e ativar status
+  if (!savedName) {
+    localStorage.setItem('chat_username', username);
+    usernameInput.readOnly = true;
+    usernameInput.style.opacity = "0.6";
+    activateUserStatus(username);
+  }
+
   push(messagesRef, {
-    uid: currentUser.uid,
-    name: currentUser.displayName || "Usuário",
-    photo: currentUser.photoURL || "",
+    username: username,
     text: message,
-    type: "text",
     timestamp: serverTimestamp()
   });
 
-  messageInput.value = "";
+  messageInput.value = '';
 });
 
-onChildAdded(messagesRef, (snapshot) => {
-  const msg = snapshot.val();
+
+// =============================
+// 🔥 RECEBER MENSAGENS
+// =============================
+onChildAdded(messagesRef, (data) => {
+
+  const msg = data.val();
   if (!msg) return;
 
-  const messageElement = document.createElement("div");
-  messageElement.classList.add("message");
+  const messageElement = document.createElement('div');
+  messageElement.classList.add('message');
 
-  let content = msg.type === "audio"
-    ? `<audio controls src="${msg.audioUrl}"></audio>`
-    : msg.text;
+  let time = "--:--";
+  if (msg.timestamp) {
+    const date = new Date(msg.timestamp);
+    time = date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
 
   messageElement.innerHTML = `
-    <div class="message-header">
-      <img src="${msg.photo || "https://via.placeholder.com/30"}">
-      <strong>${msg.name || "Usuário"}</strong>
+    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+      <div>
+        <span class="user" style="font-weight:bold; color:#ff85c1;">
+          ${msg.username}
+        </span>
+        <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
+      </div>
+      <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
     </div>
-    <div>${content}</div>
+    <div style="color:#fff;">${msg.text}</div>
   `;
 
   messagesArea.appendChild(messageElement);
   messagesArea.scrollTop = messagesArea.scrollHeight;
-});
 
-let mediaRecorder;
-let audioChunks = [];
-let stream;
+  // 🔔 Notificação
+  const isMyMessage = msg.username === usernameInput.value;
 
-recordBtn.addEventListener("click", async () => {
-
-  if (!currentUser) {
-    alert("Faça login primeiro.");
-    return;
+  if (!isMyMessage) {
+    notificationSound.play().catch(() => {});
   }
 
-  if (mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
-    recordBtn.innerHTML = "🎤";
-    return;
-  }
-
-  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
-
-  mediaRecorder.ondataavailable = e => {
-    if (e.data.size > 0) audioChunks.push(e.data);
-  };
-
-  mediaRecorder.onstop = async () => {
-
-    const blob = new Blob(audioChunks, { type: "audio/webm" });
-
-    if (blob.size < 1000) return;
-
-    const audioRef = storageRef(
-      storage,
-      `audios/${currentUser.uid}_${Date.now()}.webm`
-    );
-
-    await uploadBytes(audioRef, blob);
-    const url = await getDownloadURL(audioRef);
-
-    push(messagesRef, {
-      uid: currentUser.uid,
-      name: currentUser.displayName || "Usuário",
-      photo: currentUser.photoURL || "",
-      audioUrl: url,
-      type: "audio",
-      timestamp: serverTimestamp()
+  if (Notification.permission === "granted" && document.hidden && !isMyMessage) {
+    new Notification(`Nova mensagem de ${msg.username}`, {
+      body: msg.text
     });
+  }
 
-    stream.getTracks().forEach(track => track.stop());
-  };
+  // =============================
+  // 🔥 STATUS ONLINE / VISTO
+  // =============================
+  const statusRef = ref(db, 'users/' + msg.username);
 
-  mediaRecorder.start();
-  recordBtn.innerHTML = "🔴";
+  onValue(statusRef, (snapshot) => {
+    const userData = snapshot.val();
+    const statusDiv = messageElement.querySelector(".status");
+
+    if (!userData) return;
+
+    if (userData.online) {
+      statusDiv.innerHTML = "🟢 Online";
+    } else if (userData.lastSeen) {
+      const date = new Date(userData.lastSeen);
+      statusDiv.innerHTML = "Visto às " + date.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  });
 
 });
 
 </script>
-</body>
-</html>
