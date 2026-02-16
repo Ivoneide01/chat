@@ -1,60 +1,74 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .messages-area {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #222;
+  }
+  .message {
+    display: flex;
+    margin-bottom: 6px;
+    align-items: flex-start;
+  }
+  .message img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  .message-content {
+    flex: 1;
+    border-radius: 5px;
+    padding: 6px 10px;
+    background: #333;
+  }
+  .message .user {
+    font-weight: bold;
+  }
+  #typing-indicator {
+    font-style: italic;
+    opacity: 0.7;
+    margin: 4px 10px;
+  }
+</style>
 </head>
 <body>
 <div class="chat-container">
-    <header>
-        <h1>Chat</h1>
-    </header>
- <div id="chat-messages" class="messages-area">
-    <!-- As mensagens aparecerão aqui -->
-</div>
+  <header>
+    <h1>Chat</h1>
+  </header>
 
-<!-- Indicador "digitando..." -->
-<div id="typing-indicator" style="font-style:italic; opacity:0.7; margin:4px 0;"></div>
+  <div id="chat-messages" class="messages-area"></div>
+  <div id="typing-indicator"></div>
 
-<form id="chat-form" novalidate>
+  <form id="chat-form" novalidate>
     <input type="text" id="username" placeholder="Seu nome">
     <div class="input-group">
-        <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-        <button type="submit">Enviar</button>
+      <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+      <button type="submit">Enviar</button>
     </div>
-</form>
+  </form>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
-  getDatabase, 
-  ref, 
-  push, 
-  onChildAdded, 
-  serverTimestamp,
-  set,
-  onDisconnect,
-  onValue
+  getDatabase, ref, push, onChildAdded, serverTimestamp, set, onDisconnect, onValue 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // 🔔 Permissão para notificações
-  if (Notification.permission === "default") {
-    Notification.requestPermission().then(permission => {
-      console.log("Permissão de notificação:", permission);
-    });
-  }
-
-  // 🔔 Sons
-  const notificationSound = new Audio('som.mp3'); // som de nova mensagem
-  const typingSound = new Audio('typing.mp3'); // som de digitação
+  const notificationSound = new Audio('som.mp3');
+  const typingSound = new Audio('typing.mp3');
   typingSound.volume = 0.3;
 
-  // 🔥 CONFIG FIREBASE
   const firebaseConfig = {
     apiKey: "AIzaSyBuiBi8B3Sf6hZfLOYd9Ezl6IXw8NbbF1A",
     authDomain: "mextill.firebaseapp.com",
@@ -68,35 +82,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-
   const messagesRef = ref(db, 'messages');
   const connectedRef = ref(db, ".info/connected");
   const typingRef = ref(db, 'typing');
 
-  // 🔹 Elementos DOM
   const chatForm = document.getElementById('chat-form');
   const messageInput = document.getElementById('message-input');
   const usernameInput = document.getElementById('username');
   const messagesArea = document.getElementById('chat-messages');
+  const typingIndicator = document.getElementById('typing-indicator');
 
-  // =============================
-  // 🔥 FUNÇÃO PARA CORES POR USUÁRIO
-  // =============================
+  const defaultPhoto = 'foto3.jpg'; // fallback / terceira foto
+
+  // Função para gerar cor única baseada no nome (para borda)
   function getUserColor(username) {
     let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-      hash = username.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const color = `hsl(${hash % 360}, 70%, 60%)`;
-    return color;
+    for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    return `hsl(${hash % 360}, 70%, 60%)`;
   }
 
-  // =============================
-  // 🔥 ATIVAR STATUS ONLINE
-  // =============================
+  // Função para escolher foto com base no lastSeen
+  function getPhotoByLastSeen(lastSeen) {
+    if (lastSeen === 1771265970463) return 'nid.jpg';
+    if (lastSeen === 1771284679164) return 'nid2.jpg';
+    return defaultPhoto; // qualquer outro valor
+  }
+
   function activateUserStatus(username) {
     const userStatusRef = ref(db, 'users/' + username);
-    onValue(connectedRef, (snap) => {
+    onValue(connectedRef, snap => {
       if (snap.val() === true) {
         set(userStatusRef, { online: true, lastSeen: serverTimestamp() });
         onDisconnect(userStatusRef).update({ online: false, lastSeen: serverTimestamp() });
@@ -104,9 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =============================
-  // 🔥 CARREGAR NOME SALVO
-  // =============================
   const savedName = localStorage.getItem('chat_username');
   if (savedName) {
     usernameInput.value = savedName;
@@ -115,14 +126,11 @@ document.addEventListener('DOMContentLoaded', () => {
     activateUserStatus(savedName);
   }
 
-  // =============================
-  // 🔥 ENVIAR MENSAGEM
-  // =============================
   chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const message = messageInput.value.trim();
     const username = usernameInput.value.trim();
-    if (!username) { alert("Por favor, digite seu nome."); return; }
+    if (!username) { alert("Digite seu nome."); return; }
     if (!message) return;
 
     if (!savedName) {
@@ -133,38 +141,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     push(messagesRef, {
-      username: username,
+      username,
       text: message,
       timestamp: serverTimestamp()
     });
 
-    // Limpa input e remove status digitando
     messageInput.value = '';
     set(ref(db, `typing/${username}`), false);
   });
 
-  // =============================
-  // 🔥 MONITORAR STATUS DE USUÁRIOS
-  // =============================
   const userStatusRefs = {};
   function monitorUserStatus(username, statusDiv) {
     if (userStatusRefs[username]) return;
     const statusRef = ref(db, 'users/' + username);
-    onValue(statusRef, (snapshot) => {
+    onValue(statusRef, snapshot => {
       const userData = snapshot.val();
       if (!userData) return;
       if (userData.online) statusDiv.innerHTML = "🟢 Online";
       else if (userData.lastSeen) {
         const date = new Date(userData.lastSeen);
-        statusDiv.innerHTML = "Visto às " + date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+        statusDiv.innerHTML = "Visto às " + date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       }
     });
     userStatusRefs[username] = true;
   }
 
-  // =============================
-  // 🔥 RECEBER MENSAGENS
-  // =============================
   onChildAdded(messagesRef, (data) => {
     const msg = data.val();
     if (!msg) return;
@@ -173,78 +174,60 @@ document.addEventListener('DOMContentLoaded', () => {
     messageElement.classList.add('message');
 
     let time = "--:--";
-    if (msg.timestamp) {
-      const date = new Date(msg.timestamp);
-      time = date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-    }
+    if (msg.timestamp) time = new Date(msg.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit', minute:'2-digit'});
 
     const userColor = getUserColor(msg.username);
 
-    messageElement.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:baseline;">
-        <div>
-          <span class="user" style="font-weight:bold; color:${userColor};">
-            ${msg.username}
-          </span>
+    // Buscar lastSeen do usuário e gerar foto
+    const userRef = ref(db, 'users/' + msg.username);
+    onValue(userRef, (snapshot) => {
+      const userData = snapshot.val();
+      const photoURL = userData && userData.lastSeen 
+        ? getPhotoByLastSeen(userData.lastSeen) 
+        : defaultPhoto;
+
+      messageElement.innerHTML = `
+        <img src="${photoURL}" alt="avatar">
+        <div class="message-content" style="border-left:4px solid ${userColor}; padding-left:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span class="user" style="font-weight:bold; color:${userColor};">${msg.username}</span>
+            <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
+          </div>
+          <div style="color:#fff;">${msg.text}</div>
           <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
         </div>
-        <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
-      </div>
-      <div style="color:#fff;">${msg.text}</div>
-    `;
-    messageElement.style.borderLeft = `4px solid ${userColor}`;
-    messageElement.style.paddingLeft = "8px";
-    messageElement.style.marginBottom = "6px";
+      `;
 
-    messagesArea.appendChild(messageElement);
-    messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+      messagesArea.appendChild(messageElement);
+      messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
 
-    // 🔔 Notificação
-    const isMyMessage = msg.username === usernameInput.value;
-    if (!isMyMessage && Notification.permission === "granted" && document.hidden) {
-      new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text });
-      notificationSound.play().catch(() => {});
-    }
+      if (msg.username !== usernameInput.value && Notification.permission === "granted" && document.hidden) {
+        new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text });
+        notificationSound.play().catch(() => {});
+      }
 
-    // 🔹 Status online
-    const statusDiv = messageElement.querySelector(".status");
-    monitorUserStatus(msg.username, statusDiv);
+      const statusDiv = messageElement.querySelector(".status");
+      monitorUserStatus(msg.username, statusDiv);
+    });
   });
 
-  // =============================
-  // 🔥 INDICADOR "DIGITANDO..." MULTI-USUÁRIO
-  // =============================
-  const typingIndicator = document.getElementById('typing-indicator');
-  typingIndicator.id = "typing-indicator";
-  typingIndicator.style.fontStyle = "italic";
-  typingIndicator.style.opacity = "0.7";
-  typingIndicator.style.margin = "4px 0";
-  messagesArea.appendChild(typingIndicator);
-
   let typingTimeout;
-
   messageInput.addEventListener('input', () => {
     const username = usernameInput.value.trim();
     if (!username) return;
-
     set(ref(db, `typing/${username}`), true);
-
     clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      set(ref(db, `typing/${username}`), false);
-    }, 2000);
+    typingTimeout = setTimeout(() => set(ref(db, `typing/${username}`), false), 2000);
   });
 
   onValue(typingRef, (snapshot) => {
     const typingData = snapshot.val() || {};
     const otherUsersTyping = Object.keys(typingData)
       .filter(user => user !== usernameInput.value && typingData[user] === true);
-
     if (otherUsersTyping.length > 0) {
-      const texto = otherUsersTyping.length === 1 
+      typingIndicator.textContent = otherUsersTyping.length === 1 
         ? `${otherUsersTyping[0]} está digitando...`
         : `${otherUsersTyping.join(", ")} estão digitando...`;
-      typingIndicator.textContent = texto;
       typingSound.play().catch(() => {});
     } else {
       typingIndicator.textContent = "";
@@ -252,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 });
+
 </script>
 </body>
 </html>
