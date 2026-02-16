@@ -3,33 +3,135 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat</title>
-<link rel="stylesheet" href="style.css">
+<title>Chat Firebase</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0f0f0f;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.chat-container {
+  width: 400px;
+  height: 650px;
+  background: #111;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid #14b8a6;
+}
+
+header {
+  background: #14b8a6;
+  color: black;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+header div {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  background: #14b8a6;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.messages-area {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.message {
+  background: #2a2a2a;
+  padding: 10px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  color: white;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.message img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+form {
+  padding: 10px;
+  background: #1a1a1a;
+}
+
+.input-group {
+  display: flex;
+  gap: 5px;
+}
+
+input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+
+audio {
+  width: 100%;
+  margin-top: 5px;
+}
+</style>
 </head>
 <body>
 
-<button id="login-btn">Entrar com Google</button>
-<button id="logout-btn" style="display:none;">Sair</button>
-
 <div class="chat-container">
-<header>
-<h1>Chat</h1>
-</header>
 
-<div id="chat-messages" class="messages-area"></div>
+  <header>
+    <h1>Chat</h1>
+    <div>
+      <button id="login-btn">Entrar</button>
+      <button id="logout-btn" style="display:none;">Sair</button>
+    </div>
+  </header>
 
-<form id="chat-form">
-<div class="input-group">
-<input type="text" id="message-input" placeholder="Digite sua mensagem...">
-<button type="button" id="record-btn">🎤</button>
-<button type="submit">Enviar</button>
-</div>
-</form>
+  <div id="chat-messages" class="messages-area"></div>
+
+  <form id="chat-form">
+    <div class="input-group">
+      <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+      <button type="button" id="record-btn">🎤</button>
+      <button type="submit">Enviar</button>
+    </div>
+  </form>
+
 </div>
 
 <script type="module">
 
-// 🔥 IMPORTS
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, serverTimestamp }
 from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -49,7 +151,6 @@ import {
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-// 🔥 CONFIG
 const firebaseConfig = {
   apiKey: "SUA_API_KEY_AQUI",
   authDomain: "mextill.firebaseapp.com",
@@ -60,7 +161,6 @@ const firebaseConfig = {
   appId: "1:811140414542:web:e695c35ec6d0cdf523571f"
 };
 
-// 🔥 INIT
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
@@ -69,7 +169,6 @@ const provider = new GoogleAuthProvider();
 
 const messagesRef = ref(db, "messages");
 
-// DOM
 const loginBtn = document.getElementById("login-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const chatForm = document.getElementById("chat-form");
@@ -79,7 +178,6 @@ const recordBtn = document.getElementById("record-btn");
 
 let currentUser = null;
 
-// ================= LOGIN =================
 loginBtn.onclick = async () => {
   await signInWithPopup(auth, provider);
 };
@@ -100,7 +198,6 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// ================= ENVIAR TEXTO =================
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
@@ -114,8 +211,8 @@ chatForm.addEventListener("submit", (e) => {
 
   push(messagesRef, {
     uid: currentUser.uid,
-    name: currentUser.displayName,
-    photo: currentUser.photoURL,
+    name: currentUser.displayName || "Usuário",
+    photo: currentUser.photoURL || "",
     text: message,
     type: "text",
     timestamp: serverTimestamp()
@@ -124,9 +221,7 @@ chatForm.addEventListener("submit", (e) => {
   messageInput.value = "";
 });
 
-// ================= RECEBER =================
 onChildAdded(messagesRef, (snapshot) => {
-
   const msg = snapshot.val();
   if (!msg) return;
 
@@ -138,9 +233,9 @@ onChildAdded(messagesRef, (snapshot) => {
     : msg.text;
 
   messageElement.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;">
-      <img src="${msg.photo}" width="30" style="border-radius:50%">
-      <strong>${msg.name}</strong>
+    <div class="message-header">
+      <img src="${msg.photo || "https://via.placeholder.com/30"}">
+      <strong>${msg.name || "Usuário"}</strong>
     </div>
     <div>${content}</div>
   `;
@@ -149,7 +244,6 @@ onChildAdded(messagesRef, (snapshot) => {
   messagesArea.scrollTop = messagesArea.scrollHeight;
 });
 
-// ================= 🎤 ÁUDIO =================
 let mediaRecorder;
 let audioChunks = [];
 let stream;
@@ -167,54 +261,43 @@ recordBtn.addEventListener("click", async () => {
     return;
   }
 
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
 
-    mediaRecorder.ondataavailable = e => {
-      if (e.data.size > 0) audioChunks.push(e.data);
-    };
+  mediaRecorder.ondataavailable = e => {
+    if (e.data.size > 0) audioChunks.push(e.data);
+  };
 
-    mediaRecorder.onstop = async () => {
+  mediaRecorder.onstop = async () => {
 
-      try {
+    const blob = new Blob(audioChunks, { type: "audio/webm" });
 
-        const blob = new Blob(audioChunks, { type: "audio/webm" });
+    if (blob.size < 1000) return;
 
-        if (blob.size < 1000) return;
+    const audioRef = storageRef(
+      storage,
+      `audios/${currentUser.uid}_${Date.now()}.webm`
+    );
 
-        const audioRef = storageRef(
-          storage,
-          `audios/${currentUser.uid}_${Date.now()}.webm`
-        );
+    await uploadBytes(audioRef, blob);
+    const url = await getDownloadURL(audioRef);
 
-        await uploadBytes(audioRef, blob);
-        const url = await getDownloadURL(audioRef);
+    push(messagesRef, {
+      uid: currentUser.uid,
+      name: currentUser.displayName || "Usuário",
+      photo: currentUser.photoURL || "",
+      audioUrl: url,
+      type: "audio",
+      timestamp: serverTimestamp()
+    });
 
-        push(messagesRef, {
-          uid: currentUser.uid,
-          name: currentUser.displayName,
-          photo: currentUser.photoURL,
-          audioUrl: url,
-          type: "audio",
-          timestamp: serverTimestamp()
-        });
+    stream.getTracks().forEach(track => track.stop());
+  };
 
-      } catch (error) {
-        console.error("Erro upload:", error);
-      }
-
-      stream.getTracks().forEach(track => track.stop());
-    };
-
-    mediaRecorder.start();
-    recordBtn.innerHTML = "🔴 Parar";
-
-  } catch (err) {
-    console.error("Erro microfone:", err);
-  }
+  mediaRecorder.start();
+  recordBtn.innerHTML = "🔴";
 
 });
 
