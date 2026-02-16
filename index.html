@@ -7,258 +7,244 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="chat-container">
-        <header>
-            <h1>Chat</h1>
-        </header>
-        <div id="chat-messages" class="messages-area">
-            <!-- As mensagens aparecerão aqui -->
-        </div>
-        <form id="chat-form" novalidate>
-            <input type="text" id="username" placeholder="Seu nome">
-            <div class="input-group">
-                <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-                <button type="submit">Enviar</button>
-            </div>
-        </form>
+<div class="chat-container">
+    <header>
+        <h1>Chat</h1>
+    </header>
+    <div id="chat-messages" class="messages-area">
+        <!-- As mensagens aparecerão aqui -->
     </div>
+    <form id="chat-form" novalidate>
+        <input type="text" id="username" placeholder="Seu nome">
+        <div class="input-group">
+            <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+            <button type="submit">Enviar</button>
+        </div>
+    </form>
+</div>
+
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { 
-    getDatabase, 
-    ref, 
-    push, 
-    onChildAdded, 
-    serverTimestamp,
-    set,
-    onDisconnect,
-    onValue
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    <!-- Firebase SDK -->
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { 
+  getDatabase, 
+  ref, 
+  push, 
+  onChildAdded, 
+  serverTimestamp,
+  set,
+  onDisconnect,
+  onValue
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-  document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
 
-    // 🔔 Permissão para notificações
-    if (Notification.permission === "default") {
-      Notification.requestPermission().then(permission => {
-        console.log("Permissão de notificação:", permission);
-      });
+  // 🔔 Permissão para notificações
+  if (Notification.permission === "default") {
+    Notification.requestPermission().then(permission => {
+      console.log("Permissão de notificação:", permission);
+    });
+  }
+
+  // 🔔 Sons
+  const notificationSound = new Audio('som.mp3'); // som de nova mensagem
+  const typingSound = new Audio('typing.mp3'); // som de digitação
+  typingSound.volume = 0.3;
+
+  // 🔥 CONFIG FIREBASE
+  const firebaseConfig = {
+    apiKey: "AIzaSyBuiBi8B3Sf6hZfLOYd9Ezl6IXw8NbbF1A",
+    authDomain: "mextill.firebaseapp.com",
+    databaseURL: "https://mextill-default-rtdb.firebaseio.com",
+    projectId: "mextill",
+    storageBucket: "mextill.firebasestorage.app",
+    messagingSenderId: "811140414542",
+    appId: "1:811140414542:web:e695c35ec6d0cdf523571f",
+    measurementId: "G-7D3J6PQVZM"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const messagesRef = ref(db, 'messages');
+  const connectedRef = ref(db, ".info/connected");
+  const typingRef = ref(db, 'typing');
+
+  // 🔹 Elementos DOM
+  const chatForm = document.getElementById('chat-form');
+  const messageInput = document.getElementById('message-input');
+  const usernameInput = document.getElementById('username');
+  const messagesArea = document.getElementById('chat-messages');
+
+  // =============================
+  // 🔥 FUNÇÃO PARA CORES POR USUÁRIO
+  // =============================
+  function getUserColor(username) {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+      hash = username.charCodeAt(i) + ((hash << 5) - hash);
     }
+    const color = `hsl(${hash % 360}, 70%, 60%)`;
+    return color;
+  }
 
-    // 🔔 Sons
-    const notificationSound = new Audio('som.mp3'); // som de nova mensagem
-    const typingSound = new Audio('typing.mp3'); // som de digitação
-    typingSound.volume = 0.3;
-
-    // 🔥 CONFIG FIREBASE
-    const firebaseConfig = {
-      apiKey: "AIzaSyBuiBi8B3Sf6hZfLOYd9Ezl6IXw8NbbF1A",
-      authDomain: "mextill.firebaseapp.com",
-      databaseURL: "https://mextill-default-rtdb.firebaseio.com",
-      projectId: "mextill",
-      storageBucket: "mextill.firebasestorage.app",
-      messagingSenderId: "811140414542",
-      appId: "1:811140414542:web:e695c35ec6d0cdf523571f",
-      measurementId: "G-7D3J6PQVZM"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    const messagesRef = ref(db, 'messages');
-    const connectedRef = ref(db, ".info/connected");
-    const typingRef = ref(db, 'typing');
-
-    // 🔹 Elementos DOM
-    const chatForm = document.getElementById('chat-form');
-    const messageInput = document.getElementById('message-input');
-    const usernameInput = document.getElementById('username');
-    const messagesArea = document.getElementById('chat-messages');
-
-    // =============================
-    // 🔥 FUNÇÃO PARA CORES POR USUÁRIO
-    // =============================
-    function getUserColor(username) {
-      let hash = 0;
-      for (let i = 0; i < username.length; i++) {
-        hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  // =============================
+  // 🔥 ATIVAR STATUS ONLINE
+  // =============================
+  function activateUserStatus(username) {
+    const userStatusRef = ref(db, 'users/' + username);
+    onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        set(userStatusRef, { online: true, lastSeen: serverTimestamp() });
+        onDisconnect(userStatusRef).update({ online: false, lastSeen: serverTimestamp() });
       }
-      const color = `hsl(${hash % 360}, 70%, 60%)`;
-      return color;
-    }
+    });
+  }
 
-    // =============================
-    // 🔥 ATIVAR STATUS ONLINE
-    // =============================
-    function activateUserStatus(username) {
-      const userStatusRef = ref(db, 'users/' + username);
-      onValue(connectedRef, (snap) => {
-        if (snap.val() === true) {
-          set(userStatusRef, { online: true, lastSeen: serverTimestamp() });
-          onDisconnect(userStatusRef).update({ online: false, lastSeen: serverTimestamp() });
-        }
-      });
-    }
+  // =============================
+  // 🔥 CARREGAR NOME SALVO
+  // =============================
+  const savedName = localStorage.getItem('chat_username');
+  if (savedName) {
+    usernameInput.value = savedName;
+    usernameInput.readOnly = true;
+    usernameInput.style.opacity = "0.6";
+    activateUserStatus(savedName);
+  }
 
-    // =============================
-    // 🔥 CARREGAR NOME SALVO
-    // =============================
-    const savedName = localStorage.getItem('chat_username');
-    if (savedName) {
-      usernameInput.value = savedName;
+  // =============================
+  // 🔥 ENVIAR MENSAGEM
+  // =============================
+  chatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    const username = usernameInput.value.trim();
+    if (!username) { alert("Por favor, digite seu nome."); return; }
+    if (!message) return;
+
+    if (!savedName) {
+      localStorage.setItem('chat_username', username);
       usernameInput.readOnly = true;
       usernameInput.style.opacity = "0.6";
-      activateUserStatus(savedName);
+      activateUserStatus(username);
     }
 
-    // =============================
-    // 🔥 ENVIAR MENSAGEM
-    // =============================
-    chatForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const message = messageInput.value.trim();
-      const username = usernameInput.value.trim();
-      if (!username) { alert("Por favor, digite seu nome."); return; }
-      if (!message) return;
-
-      if (!savedName) {
-        localStorage.setItem('chat_username', username);
-        usernameInput.readOnly = true;
-        usernameInput.style.opacity = "0.6";
-        activateUserStatus(username);
-      }
-
-      push(messagesRef, {
-        username: username,
-        text: message,
-        timestamp: serverTimestamp()
-      });
-
-      messageInput.value = '';
+    push(messagesRef, {
+      username: username,
+      text: message,
+      timestamp: serverTimestamp()
     });
 
-    // =============================
-    // 🔥 MONITORAR STATUS DE USUÁRIOS
-    // =============================
-    const userStatusRefs = {};
-    function monitorUserStatus(username, statusDiv) {
-      if (userStatusRefs[username]) return;
-      const statusRef = ref(db, 'users/' + username);
-      onValue(statusRef, (snapshot) => {
-        const userData = snapshot.val();
-        if (!userData) return;
-        if (userData.online) statusDiv.innerHTML = "🟢 Online";
-        else if (userData.lastSeen) {
-          const date = new Date(userData.lastSeen);
-          statusDiv.innerHTML = "Visto às " + date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-        }
-      });
-      userStatusRefs[username] = true;
+    // Limpa input e remove status digitando
+    messageInput.value = '';
+    set(ref(db, `typing/${username}`), false);
+  });
+
+  // =============================
+  // 🔥 MONITORAR STATUS DE USUÁRIOS
+  // =============================
+  const userStatusRefs = {};
+  function monitorUserStatus(username, statusDiv) {
+    if (userStatusRefs[username]) return;
+    const statusRef = ref(db, 'users/' + username);
+    onValue(statusRef, (snapshot) => {
+      const userData = snapshot.val();
+      if (!userData) return;
+      if (userData.online) statusDiv.innerHTML = "🟢 Online";
+      else if (userData.lastSeen) {
+        const date = new Date(userData.lastSeen);
+        statusDiv.innerHTML = "Visto às " + date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+      }
+    });
+    userStatusRefs[username] = true;
+  }
+
+  // =============================
+  // 🔥 RECEBER MENSAGENS
+  // =============================
+  onChildAdded(messagesRef, (data) => {
+    const msg = data.val();
+    if (!msg) return;
+
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+
+    let time = "--:--";
+    if (msg.timestamp) {
+      const date = new Date(msg.timestamp);
+      time = date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
     }
 
-    // =============================
-    // 🔥 RECEBER MENSAGENS
-    // =============================
-    onChildAdded(messagesRef, (data) => {
-      const msg = data.val();
-      if (!msg) return;
+    const userColor = getUserColor(msg.username);
 
-      const messageElement = document.createElement('div');
-      messageElement.classList.add('message');
-
-      let time = "--:--";
-      if (msg.timestamp) {
-        const date = new Date(msg.timestamp);
-        time = date.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-      }
-
-      const userColor = getUserColor(msg.username);
-
-      messageElement.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-          <div>
-            <span class="user" style="font-weight:bold; color:${userColor};">
-              ${msg.username}
-            </span>
-            <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
-          </div>
-          <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
+    messageElement.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:baseline;">
+        <div>
+          <span class="user" style="font-weight:bold; color:${userColor};">
+            ${msg.username}
+          </span>
+          <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
         </div>
-        <div style="color:#fff;">${msg.text}</div>
-      `;
-      messageElement.style.borderLeft = `4px solid ${userColor}`;
-      messageElement.style.paddingLeft = "8px";
-      messageElement.style.marginBottom = "6px";
+        <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
+      </div>
+      <div style="color:#fff;">${msg.text}</div>
+    `;
+    messageElement.style.borderLeft = `4px solid ${userColor}`;
+    messageElement.style.paddingLeft = "8px";
+    messageElement.style.marginBottom = "6px";
 
-      messagesArea.appendChild(messageElement);
-      messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+    messagesArea.appendChild(messageElement);
+    messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
 
-      // 🔔 Notificação
-      const isMyMessage = msg.username === usernameInput.value;
-      if (!isMyMessage && Notification.permission === "granted" && document.hidden) {
-        new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text });
-        notificationSound.play().catch(() => {});
-      }
+    // 🔔 Notificação
+    const isMyMessage = msg.username === usernameInput.value;
+    if (!isMyMessage && Notification.permission === "granted" && document.hidden) {
+      new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text });
+      notificationSound.play().catch(() => {});
+    }
 
-      // 🔹 Status online
-      const statusDiv = messageElement.querySelector(".status");
-      monitorUserStatus(msg.username, statusDiv);
-    });
+    // 🔹 Status online
+    const statusDiv = messageElement.querySelector(".status");
+    monitorUserStatus(msg.username, statusDiv);
+  });
 
-    // =============================
-    // 🔥 INDICADOR "DIGITANDO..."
-    // =============================
-    const typingIndicator = document.createElement('div');
-    typingIndicator.id = "typing-indicator";
-    typingIndicator.style.fontStyle = "italic";
-    typingIndicator.style.opacity = "0.7";
-    typingIndicator.style.margin = "4px 0";
-    messagesArea.appendChild(typingIndicator);
+  // =============================
+  // 🔥 INDICADOR "DIGITANDO..."
+  // =============================
+  const typingIndicator = document.createElement('div');
+  typingIndicator.id = "typing-indicator";
+  typingIndicator.style.fontStyle = "italic";
+  typingIndicator.style.opacity = "0.7";
+  typingIndicator.style.margin = "4px 0";
+  messagesArea.appendChild(typingIndicator);
 
-    let typingTimeout;
-    let typingSoundPlayed = false;
+  let typingTimeout;
 
-    messageInput.addEventListener('input', () => {
-      const username = usernameInput.value.trim();
-      if (!username) return;
+  messageInput.addEventListener('input', () => {
+    const username = usernameInput.value.trim();
+    if (!username) return;
 
-      set(ref(db, `typing/${username}`), true);
+    set(ref(db, `typing/${username}`), true);
 
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        set(ref(db, `typing/${username}`), false);
-      }, 2000);
-    });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      set(ref(db, `typing/${username}`), false);
+    }, 2000);
+  });
 
-    onValue(typingRef, (snapshot) => {
-      const typingData = snapshot.val();
-      if (!typingData) {
-        typingIndicator.textContent = "";
-        typingSoundPlayed = false;
-        return;
-      }
+  onValue(typingRef, (snapshot) => {
+    const typingData = snapshot.val() || {};
+    const otherUsersTyping = Object.keys(typingData)
+      .filter(user => user !== usernameInput.value && typingData[user] === true);
 
-      const otherUsersTyping = Object.keys(typingData)
-        .filter(user => user !== usernameInput.value && typingData[user] === true);
+    if (otherUsersTyping.length > 0) {
+      typingIndicator.textContent = `${otherUsersTyping.join(", ")} está digitando...`;
+      typingSound.play().catch(() => {});
+    } else {
+      typingIndicator.textContent = "";
+    }
+  });
 
-      if (otherUsersTyping.length > 0) {
-        typingIndicator.textContent = `${otherUsersTyping.join(", ")} está digitando...`;
-
-        if (!document.hidden && !typingSoundPlayed) {
-          typingSound.play().catch(() => {});
-          typingSoundPlayed = true;
-          setTimeout(() => typingSoundPlayed = false, 2000);
-        }
-      } else {
-        typingIndicator.textContent = "";
-        typingSoundPlayed = false;
-      }
-    });
-
-  }); // DOMContentLoaded
+});
 </script>
-    <!-- Firebase SDK -->
-
-
 </body>
 </html>
