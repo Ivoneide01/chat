@@ -1,13 +1,13 @@
 <script type="module">
 
-// 🔔 Permissão para notificações
+// 🔔 Permissão notificação
 if (Notification.permission !== "granted") {
   Notification.requestPermission();
 }
 
 const notificationSound = new Audio('som.mp3');
 
-// 🔥 IMPORTS FIREBASE
+// 🔥 IMPORTS
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 
 import { 
@@ -16,15 +16,15 @@ import {
   push, 
   onChildAdded, 
   serverTimestamp,
-  set,
   onDisconnect,
-  onValue
+  onValue,
+  update
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 
-// 🔥 CONFIG FIREBASE
+// 🔥 CONFIG FIREBASE (MANTENHA SUA CONFIG ORIGINAL)
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
+  apiKey: "SUA_API_KEY_AQUI",
   authDomain: "mextill.firebaseapp.com",
   databaseURL: "https://mextill-default-rtdb.firebaseio.com",
   projectId: "mextill",
@@ -33,24 +33,26 @@ const firebaseConfig = {
   appId: "1:811140414542:web:e695c35ec6d0cdf523571f"
 };
 
-// 🔥 INICIALIZAR
+
+// 🔥 INICIALIZAÇÃO
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 const messagesRef = ref(db, 'messages');
 const connectedRef = ref(db, ".info/connected");
 
-
-// 🔹 ELEMENTOS DOM
+// 🔹 DOM
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
 const usernameInput = document.getElementById('username');
 const messagesArea = document.getElementById('chat-messages');
 
+let typingTimeout;
 
-// =============================
+
+// ========================================
 // 🔥 ATIVAR STATUS ONLINE REAL
-// =============================
+// ========================================
 function activateUserStatus(username) {
 
   const userStatusRef = ref(db, 'users/' + username);
@@ -58,25 +60,25 @@ function activateUserStatus(username) {
   onValue(connectedRef, (snap) => {
     if (snap.val() === true) {
 
-      // Marca online
-      set(userStatusRef, {
+      update(userStatusRef, {
         online: true,
-        lastSeen: serverTimestamp()
+        lastSeen: serverTimestamp(),
+        typing: false
       });
 
-      // Quando desconectar
       onDisconnect(userStatusRef).update({
         online: false,
-        lastSeen: serverTimestamp()
+        lastSeen: serverTimestamp(),
+        typing: false
       });
     }
   });
 }
 
 
-// =============================
+// ========================================
 // 🔥 CARREGAR NOME SALVO
-// =============================
+// ========================================
 const savedName = localStorage.getItem('chat_username');
 
 if (savedName) {
@@ -87,9 +89,35 @@ if (savedName) {
 }
 
 
-// =============================
+// ========================================
+// 🔥 DETECTAR DIGITAÇÃO
+// ========================================
+messageInput.addEventListener("input", () => {
+
+  const username = usernameInput.value.trim();
+  if (!username) return;
+
+  const userRef = ref(db, 'users/' + username);
+
+  // Marca digitando
+  update(userRef, {
+    typing: true,
+    online: true
+  });
+
+  clearTimeout(typingTimeout);
+
+  typingTimeout = setTimeout(() => {
+    update(userRef, {
+      typing: false
+    });
+  }, 1500);
+});
+
+
+// ========================================
 // 🔥 ENVIAR MENSAGEM
-// =============================
+// ========================================
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
 
@@ -97,13 +125,12 @@ chatForm.addEventListener('submit', (e) => {
   const username = usernameInput.value.trim();
 
   if (!username) {
-    alert("Por favor, digite seu nome.");
+    alert("Digite seu nome.");
     return;
   }
 
   if (!message) return;
 
-  // Salvar nome e ativar status
   if (!savedName) {
     localStorage.setItem('chat_username', username);
     usernameInput.readOnly = true;
@@ -117,13 +144,18 @@ chatForm.addEventListener('submit', (e) => {
     timestamp: serverTimestamp()
   });
 
+  // Parar digitando ao enviar
+  update(ref(db, 'users/' + username), {
+    typing: false
+  });
+
   messageInput.value = '';
 });
 
 
-// =============================
+// ========================================
 // 🔥 RECEBER MENSAGENS
-// =============================
+// ========================================
 onChildAdded(messagesRef, (data) => {
 
   const msg = data.val();
@@ -157,7 +189,6 @@ onChildAdded(messagesRef, (data) => {
   messagesArea.appendChild(messageElement);
   messagesArea.scrollTop = messagesArea.scrollHeight;
 
-  // 🔔 Notificação
   const isMyMessage = msg.username === usernameInput.value;
 
   if (!isMyMessage) {
@@ -170,26 +201,32 @@ onChildAdded(messagesRef, (data) => {
     });
   }
 
-  // =============================
-  // 🔥 STATUS ONLINE / VISTO
-  // =============================
+  // ========================================
+  // 🔥 STATUS + DIGITANDO
+  // ========================================
   const statusRef = ref(db, 'users/' + msg.username);
 
   onValue(statusRef, (snapshot) => {
+
     const userData = snapshot.val();
     const statusDiv = messageElement.querySelector(".status");
 
     if (!userData) return;
 
-    if (userData.online) {
+    if (userData.typing && !isMyMessage) {
+      statusDiv.innerHTML = "✍️ Digitando...";
+    }
+    else if (userData.online) {
       statusDiv.innerHTML = "🟢 Online";
-    } else if (userData.lastSeen) {
+    }
+    else if (userData.lastSeen) {
       const date = new Date(userData.lastSeen);
       statusDiv.innerHTML = "Visto às " + date.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
         minute: '2-digit'
       });
     }
+
   });
 
 });
