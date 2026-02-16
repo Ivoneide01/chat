@@ -210,39 +210,50 @@ document.addEventListener('DOMContentLoaded', () => {
   // =============================
   // 🔥 INDICADOR "DIGITANDO..."
   // =============================
-  const typingIndicator = document.createElement('div');
-  typingIndicator.id = "typing-indicator";
-  typingIndicator.style.fontStyle = "italic";
-  typingIndicator.style.opacity = "0.7";
-  typingIndicator.style.margin = "4px 0";
-  messagesArea.appendChild(typingIndicator);
+  // 🔥 INDICADOR "DIGITANDO..."
+const typingIndicator = document.createElement('div');
+typingIndicator.id = "typing-indicator";
+typingIndicator.style.fontStyle = "italic";
+typingIndicator.style.opacity = "0.7";
+typingIndicator.style.margin = "4px 0";
+messagesArea.appendChild(typingIndicator);
 
-  let typingTimeout;
+let typingTimeout;
 
-  messageInput.addEventListener('input', () => {
-    const username = usernameInput.value.trim();
-    if (!username) return;
+// Evento ao digitar
+messageInput.addEventListener('input', () => {
+  const username = usernameInput.value.trim();
+  if (!username) return;
 
-    set(ref(db, `typing/${username}`), true);
+  // Marca que está digitando
+  set(ref(db, `typing/${username}`), true);
 
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      set(ref(db, `typing/${username}`), false);
-    }, 2000);
-  });
+  // Limpa timeout anterior e adiciona 2s para reset
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    set(ref(db, `typing/${username}`), false);
+  }, 2000);
+});
 
-  onValue(typingRef, (snapshot) => {
-    const typingData = snapshot.val() || {};
-    const otherUsersTyping = Object.keys(typingData)
-      .filter(user => user !== usernameInput.value && typingData[user] === true);
+// Escuta todos os usuários digitando
+onValue(typingRef, (snapshot) => {
+  const typingData = snapshot.val() || {};
+  // Pega apenas os outros usuários que estão digitando
+  const otherUsersTyping = Object.keys(typingData)
+    .filter(user => user !== usernameInput.value && typingData[user] === true);
 
-    if (otherUsersTyping.length > 0) {
-      typingIndicator.textContent = `${otherUsersTyping.join(", ")} está digitando...`;
-      typingSound.play().catch(() => {});
-    } else {
-      typingIndicator.textContent = "";
-    }
-  });
+  if (otherUsersTyping.length > 0) {
+    // Plural ou singular
+    const texto = otherUsersTyping.length === 1 
+      ? `${otherUsersTyping[0]} está digitando...`
+      : `${otherUsersTyping.join(", ")} estão digitando...`;
+    typingIndicator.textContent = texto;
+    typingSound.play().catch(() => {});
+  } else {
+    typingIndicator.textContent = "";
+  }
+});
+
 
 });
 </script>
