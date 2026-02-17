@@ -50,7 +50,6 @@
 
 <form id="chat-form" novalidate>
   <input type="text" id="username" placeholder="Seu nome">
-  <input type="file" id="image-input" accept="image/*">
   <div class="input-group">
     <input type="text" id="message-input" placeholder="Digite sua mensagem...">
     <button type="submit">Enviar</button>
@@ -318,6 +317,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 });
+
+const imageBtn = document.getElementById('image-btn');
+const imageInput = document.getElementById('image-input');
+
+imageBtn.addEventListener('click', () => {
+  imageInput.click(); // abre a janela do arquivo
+});
+
 
 
 
