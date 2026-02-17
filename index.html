@@ -48,17 +48,21 @@
   <div id="chat-messages" class="messages-area"></div>
   <div id="typing-indicator"></div>
 
-  <form id="chat-form" novalidate>
-    <input type="text" id="username" placeholder="Seu nome">
-    <div class="input-group">
-      <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-      <button type="submit">Enviar</button>
-    </div>
-  </form>
+<form id="chat-form" novalidate>
+  <input type="text" id="username" placeholder="Seu nome">
+  <div class="input-group">
+    <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+    <button type="submit">Enviar</button>
+    <!-- Botão para gravar áudio -->
+    <button type="button" id="record-btn">🎤 Gravar</button>
+  </div>
+</form>
+
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { 
   getDatabase, ref, push, onChildAdded, serverTimestamp, set, onDisconnect, onValue 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -148,7 +152,59 @@ function getPhotoByUsername(username) {
 
     messageInput.value = '';
     set(ref(db, `typing/${username}`), false);
+
+    
   });
+
+  
+
+  // Botão de gravar áudio
+const recordBtn = document.getElementById('record-btn');
+let mediaRecorder;
+let audioChunks = [];
+
+// Inicializa Storage
+const storage = getStorage(app);
+
+// Função para enviar áudio para Firebase Storage e salvar link no Realtime Database
+function uploadAudio(blob, username) {
+  const fileRef = storageRef(storage, `audios/${username}_${Date.now()}.webm`);
+  uploadBytes(fileRef, blob)
+    .then(() => getDownloadURL(fileRef))
+    .then(url => {
+      // Salva link do áudio no Realtime Database
+      push(messagesRef, {
+        username,
+        audioURL: url,
+        timestamp: serverTimestamp()
+      });
+    })
+    .catch(err => console.error("Erro ao enviar áudio:", err));
+}
+
+
+recordBtn.addEventListener('click', async () => {
+  if (!mediaRecorder || mediaRecorder.state === "inactive") {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      audioChunks = [];
+      // Chame a função para enviar áudio para o Firebase
+      uploadAudio(blob, usernameInput.value);
+    };
+
+    mediaRecorder.start();
+    recordBtn.textContent = "⏹️ Parar";
+  } else if (mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    recordBtn.textContent = "🎤 Gravar";
+  }
+});
+
 
   const userStatusRefs = {};
   function monitorUserStatus(username, statusDiv) {
@@ -186,7 +242,11 @@ function getPhotoByUsername(username) {
           <span class="user" style="font-weight:bold; color:${userColor};">${msg.username}</span>
           <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
         </div>
-        <div style="color:#fff;">${msg.text}</div>
+        <div style="color:#fff;">
+  ${msg.text || ""}
+  ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
+</div>
+
         <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
       </div>
     `;
