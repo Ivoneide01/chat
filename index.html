@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="color:#fff;">
           ${msg.text || ""}
           ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
-          ${msg.imageURL ? `<img src="${msg.imageURL}" style="max-width:200px; display:block; margin-top:5px;">` : ""}
+          ${msg.imageURL ? `<img src="${msg.imageURL}" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
         </div>
         <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
       </div>
@@ -274,6 +274,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     messagesArea.appendChild(messageElement);
     messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+
+    messageElement.querySelectorAll('img').forEach(img => {
+  img.addEventListener('click', () => {
+    window.open(img.src, '_blank');
+  });
+});
+
 
     if (msg.username !== usernameInput.value && Notification.permission === "granted" && document.hidden) {
       new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text });
