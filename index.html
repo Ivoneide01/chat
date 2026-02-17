@@ -50,6 +50,7 @@
 
 <form id="chat-form" novalidate>
   <input type="text" id="username" placeholder="Seu nome">
+  <input type="file" id="image-input" accept="image/*">
   <div class="input-group">
     <input type="text" id="message-input" placeholder="Digite sua mensagem...">
     <button type="submit">Enviar</button>
@@ -86,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
+  const storage = getStorage(app); // Storage aqui
   const messagesRef = ref(db, 'messages');
   const connectedRef = ref(db, ".info/connected");
   const typingRef = ref(db, 'typing');
@@ -95,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const usernameInput = document.getElementById('username');
   const messagesArea = document.getElementById('chat-messages');
   const typingIndicator = document.getElementById('typing-indicator');
+  const imageInput = document.getElementById('image-input');
 
   const defaultPhoto = 'foto3.jpg'; // fallback / terceira foto
 
@@ -105,12 +108,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return `hsl(${hash % 360}, 70%, 60%)`;
   }
 
-function getPhotoByUsername(username) {
+  // Escolher GIF/avatar baseado no username
+  function getPhotoByUsername(username) {
     if (username === "Disteseach" || username === "disteseach") return 'aladin.gif';
     if (username === "NID" || username === "nid" || username === "Nid") return 'disney.gif';
     return 'disney.gif'; // qualquer outro usuário
-}
-
+  }
 
   function activateUserStatus(username) {
     const userStatusRef = ref(db, 'users/' + username);
@@ -130,6 +133,7 @@ function getPhotoByUsername(username) {
     activateUserStatus(savedName);
   }
 
+  // Função para enviar mensagens de texto
   chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const message = messageInput.value.trim();
@@ -152,60 +156,76 @@ function getPhotoByUsername(username) {
 
     messageInput.value = '';
     set(ref(db, `typing/${username}`), false);
-
-    
   });
 
-  
-
   // Botão de gravar áudio
-const recordBtn = document.getElementById('record-btn');
-let mediaRecorder;
-let audioChunks = [];
+  const recordBtn = document.getElementById('record-btn');
+  let mediaRecorder;
+  let audioChunks = [];
 
-// Inicializa Storage
-const storage = getStorage(app);
-
-// Função para enviar áudio para Firebase Storage e salvar link no Realtime Database
-function uploadAudio(blob, username) {
-  const fileRef = storageRef(storage, `audios/${username}_${Date.now()}.webm`);
-  uploadBytes(fileRef, blob)
-    .then(() => getDownloadURL(fileRef))
-    .then(url => {
-      // Salva link do áudio no Realtime Database
-      push(messagesRef, {
-        username,
-        audioURL: url,
-        timestamp: serverTimestamp()
-      });
-    })
-    .catch(err => console.error("Erro ao enviar áudio:", err));
-}
-
-
-recordBtn.addEventListener('click', async () => {
-  if (!mediaRecorder || mediaRecorder.state === "inactive") {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-    mediaRecorder.onstop = async () => {
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
-      audioChunks = [];
-      // Chame a função para enviar áudio para o Firebase
-      uploadAudio(blob, usernameInput.value);
-    };
-
-    mediaRecorder.start();
-    recordBtn.textContent = "⏹️ Parar";
-  } else if (mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
-    recordBtn.textContent = "🎤 Gravar";
+  function uploadAudio(blob, username) {
+    const fileRef = storageRef(storage, `audios/${username}_${Date.now()}.webm`);
+    uploadBytes(fileRef, blob)
+      .then(() => getDownloadURL(fileRef))
+      .then(url => {
+        push(messagesRef, {
+          username,
+          audioURL: url,
+          timestamp: serverTimestamp()
+        });
+      })
+      .catch(err => console.error("Erro ao enviar áudio:", err));
   }
-});
 
+  recordBtn.addEventListener('click', async () => {
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
 
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        audioChunks = [];
+        uploadAudio(blob, usernameInput.value);
+      };
+
+      mediaRecorder.start();
+      recordBtn.textContent = "⏹️ Parar";
+    } else if (mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+      recordBtn.textContent = "🎤 Gravar";
+    }
+  });
+
+  // Função para enviar imagens
+  function uploadImage(file, username) {
+    const fileRef = storageRef(storage, `images/${username}_${Date.now()}_${file.name}`);
+    uploadBytes(fileRef, file)
+      .then(() => getDownloadURL(fileRef))
+      .then(url => {
+        push(messagesRef, {
+          username,
+          imageURL: url,
+          timestamp: serverTimestamp()
+        });
+      })
+      .catch(err => console.error("Erro ao enviar imagem:", err));
+  }
+
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    const username = usernameInput.value.trim();
+    if (!username) {
+      alert("Digite seu nome antes de enviar uma imagem!");
+      return;
+    }
+    uploadImage(file, username);
+    imageInput.value = "";
+  });
+
+  // Status online/offline
   const userStatusRefs = {};
   function monitorUserStatus(username, statusDiv) {
     if (userStatusRefs[username]) return;
@@ -222,6 +242,7 @@ recordBtn.addEventListener('click', async () => {
     userStatusRefs[username] = true;
   }
 
+  // Exibir mensagens
   onChildAdded(messagesRef, (data) => {
     const msg = data.val();
     if (!msg) return;
@@ -243,10 +264,10 @@ recordBtn.addEventListener('click', async () => {
           <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
         </div>
         <div style="color:#fff;">
-  ${msg.text || ""}
-  ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
-</div>
-
+          ${msg.text || ""}
+          ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
+          ${msg.imageURL ? `<img src="${msg.imageURL}" style="max-width:200px; display:block; margin-top:5px;">` : ""}
+        </div>
         <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
       </div>
     `;
@@ -263,6 +284,7 @@ recordBtn.addEventListener('click', async () => {
     monitorUserStatus(msg.username, statusDiv);
   });
 
+  // Digitação
   let typingTimeout;
   messageInput.addEventListener('input', () => {
     const username = usernameInput.value.trim();
@@ -287,7 +309,6 @@ recordBtn.addEventListener('click', async () => {
   });
 
 });
-
 
 </script>
 </body>
