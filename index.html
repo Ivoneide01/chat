@@ -6,74 +6,156 @@
 <title>Chat</title>
 <link rel="stylesheet" href="style.css">
 <style>
+  body {
+    background-color: #000;
+    color: #030a0b;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+
+  .chat-container {
+    width: 90%;
+    max-width: 500px;
+    height: 80vh;
+    background-color: #1a1a1a;
+    border: 2px solid #00baaebd;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
+  }
+
+  header {
+    background-color: #00baaebd;
+    color: #000;
+    padding: 15px;
+    text-align: center;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
   .messages-area {
-    max-height: 400px;
-    overflow-y: auto;
+    flex: 1;
     padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     background: #222;
   }
+
   .message {
     display: flex;
     margin-bottom: 6px;
     align-items: flex-start;
   }
+
   .message img {
     width: 32px;
     height: 32px;
     border-radius: 50%;
     margin-right: 8px;
   }
+
   .message-content {
     flex: 1;
     border-radius: 5px;
     padding: 6px 10px;
     background: #333;
   }
+
   .message .user {
     font-weight: bold;
   }
+
   #typing-indicator {
     font-style: italic;
     opacity: 0.7;
     margin: 4px 10px;
+  }
+
+  .input-group {
+    display: flex;
+    gap: 10px;
+  }
+
+  #message-input {
+    flex: 1;
+    background-color: #222;
+    border: 1px solid #00baaebd;
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+  }
+
+  button {
+    background-color: #00baaebd;
+    color: #000;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+  }
+
+  button:hover {
+    background-color: #047641c9;
+  }
+
+  .dancing {
+    font-size: 3rem;
+    display: inline-block;
+    animation: dance 1s infinite;
+    color: #ff69b4;
+    text-shadow: 2px 2px 5px #000;
+  }
+
+  @keyframes dance {
+    0%   { transform: rotate(0deg) translateY(0px); }
+    20%  { transform: rotate(-5deg) translateY(-5px); }
+    40%  { transform: rotate(5deg) translateY(5px); }
+    60%  { transform: rotate(-5deg) translateY(5px); }
+    80%  { transform: rotate(5deg) translateY(-5px); }
+    100% { transform: rotate(0deg) translateY(0px); }
   }
 </style>
 </head>
 <body>
 <div class="chat-container">
   <header>
-    <h1 class="dancing"> I mιѕѕ yου </h1>
+    <h1 class="dancing">I mιѕѕ yου</h1>
   </header>
 
   <div id="chat-messages" class="messages-area"></div>
   <div id="typing-indicator"></div>
 
-<form id="chat-form" novalidate>
-  <input type="text" id="username" placeholder="Seu nome">
-  <div class="input-group">
-    <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-    <button type="submit">Enviar</button>
-    <!-- Botão para gravar áudio -->
-    <button type="button" id="record-btn">🎤 Gravar</button>
-    <!-- Input escondido -->
-<input type="file" id="image-input" accept="image/*" style="display:none;">
+  <form id="chat-form" novalidate>
+    <input type="text" id="username" placeholder="Seu nome">
+    <div class="input-group">
+      <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+      <button type="submit">Enviar</button>
+      <button type="button" id="record-btn">🎤 Gravar</button>
 
-<!-- Botão customizado -->
-<button type="button" id="image-btn">📎 Enviar Imagem</button>
-
-    <!-- Input escondido -->
-<input type="file" id="image-input" accept="image/*" style="display:none;">
-  </div>
-</form>
-
+      <!-- Input escondido para imagens -->
+      <input type="file" id="image-input" accept="image/*" style="display:none;">
+      <!-- Botão customizado para enviar imagem -->
+      <button type="button" id="image-btn">📎 Enviar Imagem</button>
+    </div>
+  </form>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { 
-  getDatabase, ref, push, onChildAdded, serverTimestamp, set, onDisconnect, onValue 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, serverTimestamp, set, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -94,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  const storage = getStorage(app); // Storage aqui
+  const storage = getStorage(app);
   const messagesRef = ref(db, 'messages');
   const connectedRef = ref(db, ".info/connected");
   const typingRef = ref(db, 'typing');
@@ -105,21 +187,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const messagesArea = document.getElementById('chat-messages');
   const typingIndicator = document.getElementById('typing-indicator');
   const imageInput = document.getElementById('image-input');
+  const imageBtn = document.getElementById('image-btn');
+  const recordBtn = document.getElementById('record-btn');
 
-  const defaultPhoto = 'foto3.jpg'; // fallback / terceira foto
+  const defaultPhoto = 'foto3.jpg';
 
-  // Função para gerar cor única baseada no nome (para borda)
   function getUserColor(username) {
     let hash = 0;
     for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
     return `hsl(${hash % 360}, 70%, 60%)`;
   }
 
-  // Escolher GIF/avatar baseado no username
   function getPhotoByUsername(username) {
-    if (username === "Disteseach" || username === "disteseach") return 'aladin.gif';
-    if (username === "NID" || username === "nid" || username === "Nid") return 'disney.gif';
-    return 'disney.gif'; // qualquer outro usuário
+    if (username.toLowerCase() === "disteseach") return 'aladin.gif';
+    if (username.toLowerCase() === "nid") return 'disney.gif';
+    return 'disney.gif';
   }
 
   function activateUserStatus(username) {
@@ -140,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
     activateUserStatus(savedName);
   }
 
-  // Função para enviar mensagens de texto
   chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const message = messageInput.value.trim();
@@ -165,8 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     set(ref(db, `typing/${username}`), false);
   });
 
-  // Botão de gravar áudio
-  const recordBtn = document.getElementById('record-btn');
+  // Áudio
   let mediaRecorder;
   let audioChunks = [];
 
@@ -181,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
           timestamp: serverTimestamp()
         });
       })
-      .catch(err => console.error("Erro ao enviar áudio:", err));
+      .catch(err => console.error(err));
   }
 
   recordBtn.addEventListener('click', async () => {
@@ -189,14 +269,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
-
       mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
       mediaRecorder.onstop = async () => {
         const blob = new Blob(audioChunks, { type: 'audio/webm' });
         audioChunks = [];
         uploadAudio(blob, usernameInput.value);
       };
-
       mediaRecorder.start();
       recordBtn.textContent = "⏹️ Parar";
     } else if (mediaRecorder.state === "recording") {
@@ -205,34 +283,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Função para enviar imagens
+  // Imagens
   function uploadImage(file, username) {
     const fileRef = storageRef(storage, `images/${username}_${Date.now()}_${file.name}`);
     uploadBytes(fileRef, file)
       .then(() => getDownloadURL(fileRef))
       .then(url => {
-        push(messagesRef, {
-          username,
-          imageURL: url,
-          timestamp: serverTimestamp()
-        });
+        push(messagesRef, { username, imageURL: url, timestamp: serverTimestamp() });
       })
-      .catch(err => console.error("Erro ao enviar imagem:", err));
+      .catch(err => console.error(err));
   }
+
+  imageBtn.addEventListener('click', () => imageInput.click());
 
   imageInput.addEventListener('change', () => {
     const file = imageInput.files[0];
     if (!file) return;
     const username = usernameInput.value.trim();
-    if (!username) {
-      alert("Digite seu nome antes de enviar uma imagem!");
-      return;
-    }
+    if (!username) { alert("Digite seu nome antes de enviar uma imagem!"); return; }
     uploadImage(file, username);
     imageInput.value = "";
   });
 
-  // Status online/offline
   const userStatusRefs = {};
   function monitorUserStatus(username, statusDiv) {
     if (userStatusRefs[username]) return;
@@ -249,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     userStatusRefs[username] = true;
   }
 
-  // Exibir mensagens
+  // Receber mensagens
   onChildAdded(messagesRef, (data) => {
     const msg = data.val();
     if (!msg) return;
@@ -259,7 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let time = "--:--";
     if (msg.timestamp) time = new Date(msg.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit', minute:'2-digit'});
-
     const userColor = getUserColor(msg.username);
     const photoURL = getPhotoByUsername(msg.username);
 
@@ -273,15 +344,20 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="color:#fff;">
           ${msg.text || ""}
           ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
-          ${msg.imageURL ? `<img src="${msg.imageURL}" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
+          ${msg.imageURL ? `<img src="${msg.imageURL}" class="chat-image" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
         </div>
         <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
       </div>
     `;
 
     messagesArea.appendChild(messageElement);
+
+    // Adiciona clique para expandir imagens
+    messageElement.querySelectorAll('.chat-image').forEach(img => {
+      img.addEventListener('click', () => window.open(img.src, '_blank'));
+    });
+
     messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
-    
 
     if (msg.username !== usernameInput.value && Notification.permission === "granted" && document.hidden) {
       new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text });
@@ -304,44 +380,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   onValue(typingRef, (snapshot) => {
     const typingData = snapshot.val() || {};
-    const otherUsersTyping = Object.keys(typingData)
-      .filter(user => user !== usernameInput.value && typingData[user] === true);
-    if (otherUsersTyping.length > 0) {
-      typingIndicator.textContent = otherUsersTyping.length === 1 
-        ? `${otherUsersTyping[0]} está digitando...`
-        : `${otherUsersTyping.join(", ")} estão digitando...`;
-      typingSound.play().catch(() => {});
-    } else {
-      typingIndicator.textContent = "";
-    }
+    const otherUsersTyping = Object.keys(typingData).filter(u => u !== usernameInput.value && typingData[u] === true);
+    typingIndicator.textContent = otherUsersTyping.length > 0
+      ? otherUsersTyping.length === 1 ? `${otherUsersTyping[0]} está digitando...` : `${otherUsersTyping.join(", ")} estão digitando...`
+      : "";
+    if (otherUsersTyping.length > 0) typingSound.play().catch(() => {});
   });
 
 });
-
-const imageBtn = document.getElementById('image-btn');
-const imageInput = document.getElementById('image-input');
-
-imageBtn.addEventListener('click', () => {
-  imageInput.click(); // abre a janela do arquivo
-});
-
-// Quando o usuário escolher a imagem
-imageInput.addEventListener('change', () => {
-  const file = imageInput.files[0];
-  if (!file) return;
-  const username = usernameInput.value.trim();
-  if (!username) {
-    alert("Digite seu nome antes de enviar uma imagem!");
-    return;
-  }
-  uploadImage(file, username);
-  imageInput.value = ""; // limpa o input
-});
-
-
-
-
-
 </script>
 </body>
 </html>
