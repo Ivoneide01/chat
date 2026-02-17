@@ -64,7 +64,7 @@ header h1 {
 }
 
 #chat-form {
-    padding: 20px;
+    padding: 5px;
     background-color: #111;
     border-top: 1px solid #333;
     display: flex;
@@ -81,9 +81,11 @@ header h1 {
 }
 
 .input-group {
-    display: flex;
-    gap: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap; /* permite que elementos quebrem linha em telas pequenas */
 }
+
 
 #message-input {
     flex: 1;
@@ -102,7 +104,31 @@ button {
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.3s;
+    flex-shrink: 0; /* evita que o botão encolha demais */
+    padding: 10px;
+    font-size: 0.9rem;
 }
+#image-btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+@media (max-width: 480px) {
+  #message-input {
+    flex: 1 1 100%; /* ocupa a linha inteira se precisar */
+  }
+
+  #chat-form .input-group {
+    flex-direction: row;
+    gap: 5px;
+  }
+
+  button {
+    font-size: 0.8rem;
+    padding: 6px 8px;
+  }
+}
+
 
 button:hover {
     background-color: #047641c9;
