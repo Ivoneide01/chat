@@ -101,12 +101,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return `hsl(${hash % 360}, 70%, 60%)`;
   }
 
-  // Função para escolher foto com base no username
-  function getPhotoByUsername(username) {
-    if (username === "Disteseach" || "disteseach") return 'nid.jpg';
-    if (username === "nid" || "NID") return 'nid2.jpg';
-    return defaultPhoto; // qualquer outro usuário
-  }
+function getPhotoByUsername(username) {
+    if (username === "Disteseach" || username === "disteseach") return 'aladin.gif';
+    if (username === "NID" || username === "nid") return 'disney.gif';
+    return 'disney.gif'; // qualquer outro usuário
+}
+
 
   function activateUserStatus(username) {
     const userStatusRef = ref(db, 'users/' + username);
