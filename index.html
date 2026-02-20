@@ -219,11 +219,11 @@ function podeVerTudo(username) {
       hash = username.charCodeAt(i) + ((hash << 5) - hash);
     return `hsl(${hash % 360}, 70%, 60%)`;
   }
-
+// colocar tudo minusculo
   function getPhotoByUsername(username) {
     if (username.toLowerCase() === "disteseach") return 'dist.jpg';
     if (username.toLowerCase() === "nid") return 'fotonid.jpeg';
-    if (username.toLowerCase() === "Distraction") return 'fotonid.jpeg';
+    if (username.toLowerCase() === "distraction") return 'fotonid.jpeg';
     return 'disney.gif';
   }
 
