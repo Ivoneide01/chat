@@ -207,7 +207,9 @@ document.addEventListener('DOMContentLoaded', () => {
 const usuariosPermitidos = ["NID", "disteseach","nid", "Disteseach", "Distraction"];
 
 function podeVerTudo(username) {
-  return usuariosPermitidos.includes(username.toLowerCase());
+  return usuariosPermitidos.includes(
+    username.trim().toLowerCase()
+  );
 }
 
   // 🎨 Cor dinâmica
