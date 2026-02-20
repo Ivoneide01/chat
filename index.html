@@ -160,7 +160,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { getDatabase, ref, push, onChildAdded, serverTimestamp, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, serverTimestamp, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -192,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const messagesRef = ref(db, 'messages');
   const typingRef = ref(db, 'typing');
+  const presenceRef = ref(db, 'presence');
 
   // 🎯 Elementos
   const chatForm = document.getElementById('chat-form');
@@ -202,15 +203,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const imageInput = document.getElementById('image-input');
   const imageBtn = document.getElementById('image-btn');
   const recordBtn = document.getElementById('record-btn');
+  const chatTitle = document.getElementById("chat-title");
 
   // 👮 Usuários permitidos
-const usuariosPermitidos = ["disteseach", "distraction" , "nid",];
-
-function podeVerTudo(username) {
-  return usuariosPermitidos.includes(
-    username.trim().toLowerCase()
-  );
-}
+  const usuariosPermitidos = ["disteseach", "distraction", "nid"];
+  function podeVerTudo(username) {
+    return usuariosPermitidos.includes(
+      username.trim().toLowerCase()
+    );
+  }
 
   // 🎨 Cor dinâmica
   function getUserColor(username) {
@@ -219,7 +220,7 @@ function podeVerTudo(username) {
       hash = username.charCodeAt(i) + ((hash << 5) - hash);
     return `hsl(${hash % 360}, 70%, 60%)`;
   }
-// colocar tudo minusculo
+
   function getPhotoByUsername(username) {
     if (username.toLowerCase() === "disteseach") return 'dist.jpg';
     if (username.toLowerCase() === "nid") return 'fotonid.jpeg';
@@ -233,6 +234,62 @@ function podeVerTudo(username) {
     usernameInput.value = savedName;
     usernameInput.readOnly = true;
     usernameInput.style.opacity = "0.6";
+    ativarPresenca(savedName); // 🔵 ativa presença ao carregar
+  }
+
+  // 🔵 Função para ativar presença
+  function ativarPresenca(username) {
+    const userStatusRef = ref(db, `presence/${username}`);
+
+    set(userStatusRef, {
+      online: true,
+      lastSeen: serverTimestamp()
+    });
+
+    onDisconnect(userStatusRef).set({
+      online: false,
+      lastSeen: serverTimestamp()
+    });
+  }
+
+  // 👀 Escutar presença
+  let usuariosOnlineAnterior = [];
+
+  onValue(presenceRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const onlineUsers = Object.keys(data).filter(u => data[u].online);
+
+    // Atualiza título
+    chatTitle.textContent = onlineUsers.length
+      ? `Online: ${onlineUsers.join(", ")}`
+      : "Chat";
+
+    // Detecta quem entrou
+    onlineUsers.forEach(user => {
+      if (!usuariosOnlineAnterior.includes(user)) {
+        adicionarMensagemSistema(`🔵 ${user} entrou no chat`);
+      }
+    });
+
+    // Detecta quem saiu
+    usuariosOnlineAnterior.forEach(user => {
+      if (!onlineUsers.includes(user)) {
+        adicionarMensagemSistema(`⚫ ${user} saiu do chat`);
+      }
+    });
+
+    usuariosOnlineAnterior = onlineUsers;
+  });
+
+  function adicionarMensagemSistema(texto) {
+    const div = document.createElement("div");
+    div.style.textAlign = "center";
+    div.style.fontSize = "0.8rem";
+    div.style.opacity = "0.6";
+    div.style.color = "#00ffcc";
+    div.textContent = texto;
+    messagesArea.appendChild(div);
+    messagesArea.scrollTop = messagesArea.scrollHeight;
   }
 
   // 📤 Enviar mensagem
@@ -243,12 +300,14 @@ function podeVerTudo(username) {
     const message = messageInput.value.trim();
 
     if (!username) return alert("Digite seu nome.");
+    if (!podeVerTudo(username)) return alert("Você não tem permissão para enviar mensagens.");
     if (!message) return;
 
     if (!savedName) {
       localStorage.setItem('chat_username', username);
       usernameInput.readOnly = true;
       usernameInput.style.opacity = "0.6";
+      ativarPresenca(username);
     }
 
     push(messagesRef, {
@@ -262,74 +321,56 @@ function podeVerTudo(username) {
   });
 
   // 📥 Receber mensagens
-  function startListeningMessages() {
+  onChildAdded(messagesRef, (data) => {
+    const msg = data.val();
+    if (!msg) return;
 
-    onChildAdded(messagesRef, (data) => {
+    const currentUser = usernameInput.value.trim();
+    if (!podeVerTudo(currentUser)) return;
 
-      const msg = data.val();
-      if (!msg) return;
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
 
-      const currentUser = usernameInput.value.trim();
+    let time = "--:--";
+    if (msg.timestamp)
+      time = new Date(msg.timestamp)
+        .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      if (!podeVerTudo(currentUser)) {
-  return; // bloqueia completamente
-}
+    const userColor = getUserColor(msg.username);
+    const photoURL = getPhotoByUsername(msg.username);
 
-      const messageElement = document.createElement('div');
-      messageElement.classList.add('message');
-
-      let time = "--:--";
-      if (msg.timestamp)
-        time = new Date(msg.timestamp)
-          .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-      const userColor = getUserColor(msg.username);
-      const photoURL = getPhotoByUsername(msg.username);
-
-      messageElement.innerHTML = `
-        <img src="${photoURL}" alt="avatar">
-        <div class="message-content" style="border-left:4px solid ${userColor}; padding-left:8px;">
-          <div style="display:flex; justify-content:space-between;">
-            <span style="font-weight:bold; color:${userColor};">${msg.username}</span>
-            <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
-          </div>
-          <div style="color:#fff;">
-            ${msg.text || ""}
-            ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
-            ${msg.imageURL ? `<img src="${msg.imageURL}" class="chat-image" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
-          </div>
+    messageElement.innerHTML = `
+      <img src="${photoURL}" alt="avatar">
+      <div class="message-content" style="border-left:4px solid ${userColor}; padding-left:8px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="font-weight:bold; color:${userColor};">${msg.username}</span>
+          <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
         </div>
-      `;
+        <div style="color:#fff;">
+          ${msg.text || ""}
+          ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
+          ${msg.imageURL ? `<img src="${msg.imageURL}" class="chat-image" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
+        </div>
+      </div>
+    `;
 
-      // 📳 Vibração + Som
-      if (msg.username !== currentUser) {
-
-        if ("vibrate" in navigator) {
-          navigator.vibrate([500, 200, 500]);
-        }
-
-        notificationSound.play().catch(() => {});
-
-        if (Notification.permission === "granted" && document.hidden) {
-          new Notification(`Nova mensagem de ${msg.username}`, {
-            body: msg.text || "Nova mídia recebida"
-          });
-        }
+    // 📳 Vibração + som
+    if (msg.username !== currentUser) {
+      if ("vibrate" in navigator) navigator.vibrate([500,200,500]);
+      notificationSound.play().catch(() => {});
+      if (Notification.permission === "granted" && document.hidden) {
+        new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text || "Nova mídia recebida" });
       }
+    }
 
-      // 🖼️ Expandir imagem
-      messageElement.querySelectorAll('.chat-image').forEach(img => {
-        img.addEventListener('click', () => window.open(img.src, '_blank'));
-      });
-
-      messagesArea.appendChild(messageElement);
-      messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
-
+    // 🖼️ Expandir imagem
+    messageElement.querySelectorAll('.chat-image').forEach(img => {
+      img.addEventListener('click', () => window.open(img.src, '_blank'));
     });
 
-  }
-
-  startListeningMessages();
+    messagesArea.appendChild(messageElement);
+    messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+  });
 
   // ✍️ Digitando
   let typingTimeout;
@@ -361,6 +402,65 @@ function podeVerTudo(username) {
 
     if (typingUsers.length > 0)
       typingSound.play().catch(() => {});
+  });
+
+  // 📎 Enviar imagem
+  imageBtn.addEventListener("click", () => imageInput.click());
+
+  imageInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const username = usernameInput.value.trim();
+    if (!username || !podeVerTudo(username)) return;
+
+    const fileRef = storageRef(storage, `images/${Date.now()}_${file.name}`);
+    await uploadBytes(fileRef, file);
+    const downloadURL = await getDownloadURL(fileRef);
+
+    push(messagesRef, {
+      username,
+      imageURL: downloadURL,
+      timestamp: serverTimestamp()
+    });
+  });
+
+  // 🎤 Gravar áudio
+  let mediaRecorder;
+  let audioChunks = [];
+
+  recordBtn.addEventListener("click", async () => {
+    const username = usernameInput.value.trim();
+    if (!username || !podeVerTudo(username)) return;
+
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.start();
+      recordBtn.textContent = "⏹️ Parar";
+
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        audioChunks = [];
+
+        const fileRef = storageRef(storage, `audios/${Date.now()}.webm`);
+        await uploadBytes(fileRef, blob);
+        const downloadURL = await getDownloadURL(fileRef);
+
+        push(messagesRef, {
+          username,
+          audioURL: downloadURL,
+          timestamp: serverTimestamp()
+        });
+
+        recordBtn.textContent = "🎤 Gravar";
+      };
+    } else {
+      mediaRecorder.stop();
+    }
   });
 
 });
