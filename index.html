@@ -232,7 +232,12 @@ document.addEventListener('DOMContentLoaded', () => {
     usernameInput.style.opacity = "0.6";
     activateUserStatus(savedName);
   }
-  if (savedName.toLowerCase() === "NID" || savedName.toLowerCase() === "disteseach") {
+  if (
+  savedName.toLowerCase() === "nid" ||
+  savedName.toLowerCase() === "disteseach" ||
+  savedName.toLowerCase() === "Disteseach" ||
+  savedName.toLowerCase() === "NID"
+) {
   startListeningMessages();
 } else {
   chatTitle.textContent = "🔒 Acesso Restrito";
