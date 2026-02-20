@@ -325,6 +325,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const msg = data.val();
     if (!msg) return;
 
+        // ⚡ Se for nudge
+    if (msg.type === "nudge") {
+        const currentUser = usernameInput.value.trim();
+        if (msg.from !== currentUser) {
+            // Tremer o chat
+            messagesArea.classList.add('shake');
+            setTimeout(() => messagesArea.classList.remove('shake'), 500);
+
+            // Som de notificação
+            notificationSound.play().catch(() => {});
+
+            // Vibração se o dispositivo permitir
+            if ("vibrate" in navigator) navigator.vibrate([300,100,300]);
+        }
+        return; // não adiciona nada no chat visualmente
+    }
+
     const currentUser = usernameInput.value.trim();
     if (!podeVerTudo(currentUser)) return;
 
@@ -465,11 +482,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ⚡ Botão Nudge / Atenção
 const nudgeBtn = document.getElementById('nudge-btn');
+// ⚡ Botão Nudge / Atenção para todos
 nudgeBtn.addEventListener('click', () => {
-  if ("vibrate" in navigator) {
-    // Vibra 3 vezes: 500ms on, 200ms off, 500ms on
-    navigator.vibrate([500, 200, 500]);
-  }
+  const username = usernameInput.value.trim();
+  if (!username || !podeVerTudo(username)) return;
+
+  // Envia um "nudge" para todos via Firebase
+  push(messagesRef, {
+    type: "nudge",
+    from: username,
+    timestamp: serverTimestamp()
+  });
 });
 
 nudgeBtn.addEventListener('click', () => {
