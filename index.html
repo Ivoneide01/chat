@@ -321,73 +321,74 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // 📥 Receber mensagens
-  onChildAdded(messagesRef, (data) => {
-    const msg = data.val();
-    if (!msg) return;
+onChildAdded(messagesRef, (data) => {
+  const msg = data.val();
+  if (!msg) return;
 
-        // ⚡ Se for nudge
-    if (msg.type === "nudge") {
-        const currentUser = usernameInput.value.trim();
-        if (msg.from !== currentUser) {
-            // Tremer o chat
-            messagesArea.classList.add('shake');
-            setTimeout(() => messagesArea.classList.remove('shake'), 500);
+  const currentUser = usernameInput.value.trim();
 
-            // Som de notificação
-            notificationSound.play().catch(() => {});
+  // ⚡ NUDGE: tremer chat nos outros usuários
+  if (msg.type === "nudge") {
+    if (msg.from !== currentUser) {
+      // Tremer o chat
+      messagesArea.classList.add('shake');
+      setTimeout(() => messagesArea.classList.remove('shake'), 500);
 
-            // Vibração se o dispositivo permitir
-            if ("vibrate" in navigator) navigator.vibrate([300,100,300]);
-        }
-        return; // não adiciona nada no chat visualmente
-    }
-
-    const currentUser = usernameInput.value.trim();
-    if (!podeVerTudo(currentUser)) return;
-
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-
-    let time = "--:--";
-    if (msg.timestamp)
-      time = new Date(msg.timestamp)
-        .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    const userColor = getUserColor(msg.username);
-    const photoURL = getPhotoByUsername(msg.username);
-
-    messageElement.innerHTML = `
-      <img src="${photoURL}" alt="avatar">
-      <div class="message-content" style="border-left:4px solid ${userColor}; padding-left:8px;">
-        <div style="display:flex; justify-content:space-between;">
-          <span style="font-weight:bold; color:${userColor};">${msg.username}</span>
-          <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
-        </div>
-        <div style="color:#fff;">
-          ${msg.text || ""}
-          ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
-          ${msg.imageURL ? `<img src="${msg.imageURL}" class="chat-image" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
-        </div>
-      </div>
-    `;
-
-    // 📳 Vibração + som
-    if (msg.username !== currentUser) {
-      if ("vibrate" in navigator) navigator.vibrate([500,200,500]);
+      // Som de notificação
       notificationSound.play().catch(() => {});
-      if (Notification.permission === "granted" && document.hidden) {
-        new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text || "Nova mídia recebida" });
-      }
+
+      // Opcional: vibração se o dispositivo permitir
+      if ("vibrate" in navigator) navigator.vibrate([300,100,300]);
     }
+    return; // não adiciona no chat visualmente
+  }
 
-    // 🖼️ Expandir imagem
-    messageElement.querySelectorAll('.chat-image').forEach(img => {
-      img.addEventListener('click', () => window.open(img.src, '_blank'));
-    });
+  // 🔹 Mensagem normal
+  if (!podeVerTudo(currentUser)) return;
 
-    messagesArea.appendChild(messageElement);
-    messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+  const messageElement = document.createElement('div');
+  messageElement.classList.add('message');
+
+  let time = "--:--";
+  if (msg.timestamp)
+    time = new Date(msg.timestamp)
+      .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  const userColor = getUserColor(msg.username);
+  const photoURL = getPhotoByUsername(msg.username);
+
+  messageElement.innerHTML = `
+    <img src="${photoURL}" alt="avatar">
+    <div class="message-content" style="border-left:4px solid ${userColor}; padding-left:8px;">
+      <div style="display:flex; justify-content:space-between;">
+        <span style="font-weight:bold; color:${userColor};">${msg.username}</span>
+        <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
+      </div>
+      <div style="color:#fff;">
+        ${msg.text || ""}
+        ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
+        ${msg.imageURL ? `<img src="${msg.imageURL}" class="chat-image" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
+      </div>
+    </div>
+  `;
+
+  // Som + vibração se for outra pessoa
+  if (msg.username !== currentUser) {
+    notificationSound.play().catch(() => {});
+    if ("vibrate" in navigator) navigator.vibrate([500,200,500]);
+    if (Notification.permission === "granted" && document.hidden) {
+      new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text || "Nova mídia recebida" });
+    }
+  }
+
+  // Expandir imagem
+  messageElement.querySelectorAll('.chat-image').forEach(img => {
+    img.addEventListener('click', () => window.open(img.src, '_blank'));
   });
+
+  messagesArea.appendChild(messageElement);
+  messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+});
 
   // ✍️ Digitando
   let typingTimeout;
@@ -493,11 +494,9 @@ nudgeBtn.addEventListener('click', () => {
     from: username,
     timestamp: serverTimestamp()
   });
-});
 
-nudgeBtn.addEventListener('click', () => {
-  if ("vibrate" in navigator) navigator.vibrate([500,200,500]);
   notificationSound.play().catch(() => {});
+if ("vibrate" in navigator) navigator.vibrate([500,200,500]);
 });
 
 });
