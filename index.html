@@ -160,14 +160,21 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { getDatabase, ref, push, onChildAdded, serverTimestamp, set, onDisconnect, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, serverTimestamp, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
+  // 🔔 Sons
   const notificationSound = new Audio('som.mp3');
   const typingSound = new Audio('typing.mp3');
   typingSound.volume = 0.3;
 
+  // 🔔 Permissão de notificação
+  if ("Notification" in window && Notification.permission !== "granted") {
+    Notification.requestPermission();
+  }
+
+  // 🔥 Firebase (SEU ORIGINAL)
   const firebaseConfig = {
     apiKey: "AIzaSyBuiBi8B3Sf6hZfLOYd9Ezl6IXw8NbbF1A",
     authDomain: "mextill.firebaseapp.com",
@@ -182,29 +189,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
   const storage = getStorage(app);
+
   const messagesRef = ref(db, 'messages');
-  const connectedRef = ref(db, ".info/connected");
   const typingRef = ref(db, 'typing');
 
+  // 🎯 Elementos
   const chatForm = document.getElementById('chat-form');
   const messageInput = document.getElementById('message-input');
   const usernameInput = document.getElementById('username');
-  function userHasAccess() {
-  const username = usernameInput.value.trim().toLowerCase();
-  return username === "NID" || username === "Disteseach";
-}
   const messagesArea = document.getElementById('chat-messages');
-  const chatTitle = document.getElementById('chat-title');
   const typingIndicator = document.getElementById('typing-indicator');
   const imageInput = document.getElementById('image-input');
   const imageBtn = document.getElementById('image-btn');
   const recordBtn = document.getElementById('record-btn');
 
-  const defaultPhoto = 'foto3.jpg';
+  // 👮 Usuários permitidos
+const usuariosPermitidos = ["NID", "disteseach","nid", "Disteseach", "Distraction"];
 
+function podeVerTudo(username) {
+  return usuariosPermitidos.includes(username.toLowerCase());
+}
+
+  // 🎨 Cor dinâmica
   function getUserColor(username) {
     let hash = 0;
-    for (let i = 0; i < username.length; i++) hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < username.length; i++)
+      hash = username.charCodeAt(i) + ((hash << 5) - hash);
     return `hsl(${hash % 360}, 70%, 60%)`;
   }
 
@@ -214,48 +224,28 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'disney.gif';
   }
 
-  function activateUserStatus(username) {
-    
-    const userStatusRef = ref(db, 'users/' + username);
-    onValue(connectedRef, snap => {
-      if (snap.val() === true) {
-        set(userStatusRef, { online: true, lastSeen: serverTimestamp() });
-        onDisconnect(userStatusRef).update({ online: false, lastSeen: serverTimestamp() });
-      }
-    });
-  }
-
+  // 💾 Salvar usuário
   const savedName = localStorage.getItem('chat_username');
   if (savedName) {
     usernameInput.value = savedName;
     usernameInput.readOnly = true;
     usernameInput.style.opacity = "0.6";
-    activateUserStatus(savedName);
   }
-  if (
-  savedName.toLowerCase() === "nid" ||
-  savedName.toLowerCase() === "disteseach" ||
-  savedName.toLowerCase() === "Disteseach" ||
-  savedName.toLowerCase() === "NID"
-) {
-  startListeningMessages();
-} else {
-  chatTitle.textContent = "🔒 Acesso Restrito";
-  messagesArea.innerHTML = "<div style='text-align:center; margin-top:20px; opacity:0.6;'>Você não tem permissão para ver este chat.</div>";
-}
 
+  // 📤 Enviar mensagem
   chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const message = messageInput.value.trim();
+
     const username = usernameInput.value.trim();
-    if (!username) { alert("Digite seu nome."); return; }
+    const message = messageInput.value.trim();
+
+    if (!username) return alert("Digite seu nome.");
     if (!message) return;
 
     if (!savedName) {
       localStorage.setItem('chat_username', username);
       usernameInput.readOnly = true;
       usernameInput.style.opacity = "0.6";
-      activateUserStatus(username);
     }
 
     push(messagesRef, {
@@ -268,228 +258,109 @@ document.addEventListener('DOMContentLoaded', () => {
     set(ref(db, `typing/${username}`), false);
   });
 
-  // Áudio
-  let mediaRecorder;
-  let audioChunks = [];
+  // 📥 Receber mensagens
+  function startListeningMessages() {
 
-  function uploadAudio(blob, username) {
-    const fileRef = storageRef(storage, `audios/${username}_${Date.now()}.webm`);
-    uploadBytes(fileRef, blob)
-      .then(() => getDownloadURL(fileRef))
-      .then(url => {
-        push(messagesRef, {
-          username,
-          audioURL: url,
-          timestamp: serverTimestamp()
-        });
-      })
-      .catch(err => console.error(err));
-  }
+    onChildAdded(messagesRef, (data) => {
 
-  recordBtn.addEventListener('click', async () => {
-    if (!mediaRecorder || mediaRecorder.state === "inactive") {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
-        audioChunks = [];
-        uploadAudio(blob, usernameInput.value);
-      };
-      mediaRecorder.start();
-      recordBtn.textContent = "⏹️ Parar";
-    } else if (mediaRecorder.state === "recording") {
-      mediaRecorder.stop();
-      recordBtn.textContent = "🎤 Gravar";
-    }
-  });
+      const msg = data.val();
+      if (!msg) return;
 
-  // Imagens
-  function uploadImage(file, username) {
-    const fileRef = storageRef(storage, `images/${username}_${Date.now()}_${file.name}`);
-    uploadBytes(fileRef, file)
-      .then(() => getDownloadURL(fileRef))
-      .then(url => {
-        push(messagesRef, { username, imageURL: url, timestamp: serverTimestamp() });
-      })
-      .catch(err => console.error(err));
-  }
+      const currentUser = usernameInput.value.trim();
 
-  imageBtn.addEventListener('click', () => imageInput.click());
-
-  imageInput.addEventListener('change', () => {
-    const file = imageInput.files[0];
-    if (!file) return;
-    const username = usernameInput.value.trim();
-    if (!username) { alert("Digite seu nome antes de enviar uma imagem!"); return; }
-    uploadImage(file, username);
-    imageInput.value = "";
-  });
-
-  const userStatusRefs = {};
-  function monitorUserStatus(username, statusDiv) {
-    if (userStatusRefs[username]) return;
-    const statusRef = ref(db, 'users/' + username);
-    onValue(statusRef, snapshot => {
-      const userData = snapshot.val();
-      if (!userData) return;
-      if (userData.online) statusDiv.innerHTML = "🟢 Online";
-      else if (userData.lastSeen) {
-        const date = new Date(userData.lastSeen);
-        statusDiv.innerHTML = "Visto às " + date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      }
-    });
-    userStatusRefs[username] = true;
-  }
-// Monitorar usuários online para atualizar o topo
-const usersRef = ref(db, 'users');
-
-let previousUsers = {};
-
-onValue(usersRef, (snapshot) => {
-  const usersData = snapshot.val() || {};
-
-  Object.keys(usersData).forEach(username => {
-    const user = usersData[username];
-    const previous = previousUsers[username];
-
-    // Usuário entrou
-    if (user.online === true && (!previous || previous.online === false)) {
-      if (username !== usernameInput.value) {
-        addSystemMessage(`✨ ${username} entrou no chat`);
-      }
-    }
-
-    // Usuário saiu
-    if (user.online === false && previous && previous.online === true) {
-      if (username !== usernameInput.value) {
-        addSystemMessage(`🚪 ${username} saiu do chat`);
-      }
-    }
-  });
-
-  previousUsers = usersData;
-});
-
-onValue(usersRef, (snapshot) => {
-  const usersData = snapshot.val() || {};
-  const currentUser = usernameInput.value;
-  
-  const onlineUsers = Object.keys(usersData).filter(user => 
-    usersData[user].online === true && user !== currentUser
-  );
-
-  if (onlineUsers.length === 1) {
-    chatTitle.textContent = `${onlineUsers[0]} está online`;
-  } else if (onlineUsers.length > 1) {
-    chatTitle.textContent = `${onlineUsers.length} pessoas estão online`;
-  } else {
-    chatTitle.textContent = "Chat";
-  }
-});
-
-function addSystemMessage(text) {
-  const systemElement = document.createElement('div');
-  systemElement.style.textAlign = "center";
-  systemElement.style.opacity = "0.6";
-  systemElement.style.fontSize = "0.8rem";
-  systemElement.style.margin = "5px 0";
-  systemElement.style.color = "#00ffcc";
-  systemElement.textContent = text;
-
-  messagesArea.appendChild(systemElement);
-  messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+      if (!podeVerTudo(currentUser)) {
+  return; // bloqueia completamente
 }
 
+      const messageElement = document.createElement('div');
+      messageElement.classList.add('message');
 
+      let time = "--:--";
+      if (msg.timestamp)
+        time = new Date(msg.timestamp)
+          .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-function startListeningMessages() {
+      const userColor = getUserColor(msg.username);
+      const photoURL = getPhotoByUsername(msg.username);
 
-  onChildAdded(messagesRef, (data) => {
-
-    const msg = data.val();
-    if (!msg) return;
-
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message');
-
-    let time = "--:--";
-    if (msg.timestamp)
-      time = new Date(msg.timestamp)
-        .toLocaleTimeString('pt-BR',{hour:'2-digit', minute:'2-digit'});
-
-    const userColor = getUserColor(msg.username);
-    const photoURL = getPhotoByUsername(msg.username);
-
-    messageElement.innerHTML = `
-      <img src="${photoURL}" alt="avatar">
-      <div class="message-content" style="border-left:4px solid ${userColor}; padding-left:8px;">
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-          <span class="user" style="font-weight:bold; color:${userColor};">${msg.username}</span>
-          <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
+      messageElement.innerHTML = `
+        <img src="${photoURL}" alt="avatar">
+        <div class="message-content" style="border-left:4px solid ${userColor}; padding-left:8px;">
+          <div style="display:flex; justify-content:space-between;">
+            <span style="font-weight:bold; color:${userColor};">${msg.username}</span>
+            <span style="font-size:0.7rem; opacity:0.6;">${time}</span>
+          </div>
+          <div style="color:#fff;">
+            ${msg.text || ""}
+            ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
+            ${msg.imageURL ? `<img src="${msg.imageURL}" class="chat-image" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
+          </div>
         </div>
-        <div style="color:#fff;">
-          ${msg.text || ""}
-          ${msg.audioURL ? `<audio controls src="${msg.audioURL}"></audio>` : ""}
-          ${msg.imageURL ? `<img src="${msg.imageURL}" class="chat-image" style="max-width:300px; display:block; margin-top:5px; cursor:pointer;">` : ""}
-        </div>
-        <div class="status" style="font-size:0.65rem; opacity:0.7;"></div>
-      </div>
-    `;
+      `;
 
-    messagesArea.appendChild(messageElement);
-    messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+      // 📳 Vibração + Som
+      if (msg.username !== currentUser) {
 
-  });
+        if ("vibrate" in navigator) {
+          navigator.vibrate([500, 200, 500]);
+        }
 
-}
+        notificationSound.play().catch(() => {});
 
-    // Adiciona clique para expandir imagens
-    messageElement.querySelectorAll('.chat-image').forEach(img => {
-      img.addEventListener('click', () => window.open(img.src, '_blank'));
+        if (Notification.permission === "granted" && document.hidden) {
+          new Notification(`Nova mensagem de ${msg.username}`, {
+            body: msg.text || "Nova mídia recebida"
+          });
+        }
+      }
+
+      // 🖼️ Expandir imagem
+      messageElement.querySelectorAll('.chat-image').forEach(img => {
+        img.addEventListener('click', () => window.open(img.src, '_blank'));
+      });
+
+      messagesArea.appendChild(messageElement);
+      messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+
     });
 
-    messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
-
-if (msg.username !== usernameInput.value) {
-
-  // 📳 Vibração REAL no celular
-  if ("vibrate" in navigator) {
-    navigator.vibrate([500,200,500,200,700]);
   }
 
-  // 🔔 Som
-  notificationSound.play().catch(() => {});
+  startListeningMessages();
 
-  // 🔔 Notificação se aba estiver minimizada
-  if (Notification.permission === "granted" && document.hidden) {
-    new Notification(`Nova mensagem de ${msg.username}`, { body: msg.text });
-  }
-}
-
-    const statusDiv = messageElement.querySelector(".status");
-    monitorUserStatus(msg.username, statusDiv);
-  });
-
-  // Digitação
+  // ✍️ Digitando
   let typingTimeout;
   messageInput.addEventListener('input', () => {
     const username = usernameInput.value.trim();
     if (!username) return;
+
     set(ref(db, `typing/${username}`), true);
+
     clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => set(ref(db, `typing/${username}`), false), 2000);
+    typingTimeout = setTimeout(() => {
+      set(ref(db, `typing/${username}`), false);
+    }, 2000);
   });
 
   onValue(typingRef, (snapshot) => {
     const typingData = snapshot.val() || {};
-    const otherUsersTyping = Object.keys(typingData).filter(u => u !== usernameInput.value && typingData[u] === true);
-    typingIndicator.textContent = otherUsersTyping.length > 0
-      ? otherUsersTyping.length === 1 ? `${otherUsersTyping[0]} está digitando...` : `${otherUsersTyping.join(", ")} estão digitando...`
-      : "";
-    if (otherUsersTyping.length > 0) typingSound.play().catch(() => {});
+    const currentUser = usernameInput.value;
+
+    const typingUsers = Object.keys(typingData)
+      .filter(u => u !== currentUser && typingData[u] === true);
+
+    typingIndicator.textContent =
+      typingUsers.length === 1
+        ? `${typingUsers[0]} está digitando...`
+        : typingUsers.length > 1
+          ? `${typingUsers.join(", ")} estão digitando...`
+          : "";
+
+    if (typingUsers.length > 0)
+      typingSound.play().catch(() => {});
   });
+
+});
 </script>
 </body>
 </html>
