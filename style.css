@@ -211,3 +211,36 @@ button:hover {
   80%  { transform: rotate(5deg) translateY(-5px); }
   100% { transform: rotate(0deg) translateY(0px); }
 }
+
+/* FLASH vermelho */
+@keyframes flashRed {
+  0% { background-color: #3a0000; }
+  50% { background-color: #7a0000; }
+  100% { background-color: #3a0000; }
+}
+
+.flash {
+  animation: flashRed 0.5s ease-in-out 3;
+}
+
+/* Aviso central */
+.nudge-alert {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #ff004c;
+  color: #fff;
+  padding: 20px 40px;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  z-index: 9999;
+  box-shadow: 0 0 20px rgba(0,0,0,0.6);
+  animation: popIn 0.3s ease;
+}
+
+@keyframes popIn {
+  from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
