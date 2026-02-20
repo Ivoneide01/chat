@@ -189,13 +189,19 @@ button:hover {
 .emoji:hover {
   transform: scale(1.2);
 }
-.dancing {
+.love-title {
   font-size: 3rem;
   display: inline-block;
-  animation: dance 1s infinite;
-  color: #ff69b4;
-  text-shadow: 2px 2px 5px #000;
+  font-weight: bold;
+  background: linear-gradient(45deg, #ff4d88, #ff99cc, #ff4d88);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: heartbeat 1.5s ease-in-out infinite,
+             shine 4s linear infinite;
+  text-shadow: 0 0 15px rgba(255, 105, 180, 0.5);
 }
+
 
 @keyframes dance {
   0%   { transform: rotate(0deg) translateY(0px); }
