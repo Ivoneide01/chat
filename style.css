@@ -269,3 +269,12 @@ button:hover {
 .shake-effect {
   animation: shake 0.5s ease-in-out 1;
 }
+.system-message {
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fadeSlide 0.5s forwards;
+}
+
+@keyframes fadeSlide {
+  to { opacity: 1; transform: translateY(0); }
+}

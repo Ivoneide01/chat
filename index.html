@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function adicionarMensagemSistema(texto) {
     const div = document.createElement("div");
+    div.classList.add("system-message"); // ← adiciona a classe
     div.style.textAlign = "center";
     div.style.fontSize = "0.8rem";
     div.style.opacity = "0.6";
