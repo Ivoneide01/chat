@@ -189,6 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatForm = document.getElementById('chat-form');
   const messageInput = document.getElementById('message-input');
   const usernameInput = document.getElementById('username');
+  function userHasAccess() {
+  const username = usernameInput.value.trim().toLowerCase();
+  return username === "NID" || username === "disteseach";
+}
   const messagesArea = document.getElementById('chat-messages');
   const chatTitle = document.getElementById('chat-title');
   const typingIndicator = document.getElementById('typing-indicator');
@@ -388,6 +392,9 @@ function addSystemMessage(text) {
 
   // Receber mensagens
   onChildAdded(messagesRef, (data) => {
+    if (!userHasAccess()) {
+  return; // bloqueia mensagens
+}
     const msg = data.val();
     if (!msg) return;
 
