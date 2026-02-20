@@ -463,7 +463,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ⚡ Botão Nudge / Atenção
+const nudgeBtn = document.getElementById('nudge-btn');
+nudgeBtn.addEventListener('click', () => {
+  if ("vibrate" in navigator) {
+    // Vibra 3 vezes: 500ms on, 200ms off, 500ms on
+    navigator.vibrate([500, 200, 500]);
+  }
 });
+
+nudgeBtn.addEventListener('click', () => {
+  if ("vibrate" in navigator) navigator.vibrate([500,200,500]);
+  notificationSound.play().catch(() => {});
+});
+
+});
+
+
 </script>
 </body>
 </html>
