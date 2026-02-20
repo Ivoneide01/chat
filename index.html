@@ -16,6 +16,7 @@
     height: 100vh;
     margin: 0;
   }
+  
 
   .chat-container {
     width: 90%;
@@ -155,6 +156,13 @@
       <button type="button" id="image-btn">📎 Enviar Imagem</button>
     </div>
   </form>
+</div>
+
+<!-- Modal de visualização -->
+<div id="preview-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:9999;">
+  <span id="close-preview" style="position:absolute; top:20px; right:30px; font-size:2rem; color:#fff; cursor:pointer;">&times;</span>
+  <img id="preview-image" style="max-width:90%; max-height:80%; display:none; border-radius:10px;">
+  <video id="preview-video" controls style="max-width:90%; max-height:80%; display:none; border-radius:10px;"></video>
 </div>
 
 <script type="module">
@@ -383,9 +391,41 @@ onChildAdded(messagesRef, (data) => {
   }
 
   // Expandir imagem
-  messageElement.querySelectorAll('.chat-image').forEach(img => {
-    img.addEventListener('click', () => window.open(img.src, '_blank'));
+ const previewModal = document.getElementById('preview-modal');
+const previewImage = document.getElementById('preview-image');
+const previewVideo = document.getElementById('preview-video');
+const closePreview = document.getElementById('close-preview');
+
+messageElement.querySelectorAll('.chat-image').forEach(img => {
+  img.addEventListener('click', () => {
+    if(img.src.endsWith(".mp4") || img.src.endsWith(".webm")) {
+      previewImage.style.display = "none";
+      previewVideo.src = img.src;
+      previewVideo.style.display = "block";
+    } else {
+      previewVideo.style.display = "none";
+      previewImage.src = img.src;
+      previewImage.style.display = "block";
+    }
+    previewModal.classList.add('show');
   });
+});
+
+// Fechar modal
+closePreview.addEventListener('click', () => {
+  previewModal.classList.remove('show');
+  previewImage.src = "";
+  previewVideo.src = "";
+});
+
+// Fechar clicando fora da imagem/video
+previewModal.addEventListener('click', (e) => {
+  if(e.target === previewModal) {
+    previewModal.classList.remove('show');
+    previewImage.src = "";
+    previewVideo.src = "";
+  }
+});
 
   messagesArea.appendChild(messageElement);
   messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
@@ -504,5 +544,6 @@ if ("vibrate" in navigator) navigator.vibrate([500,200,500]);
 
 
 </script>
+
 </body>
 </html>

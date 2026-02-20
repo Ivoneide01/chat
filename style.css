@@ -278,3 +278,13 @@ button:hover {
 @keyframes fadeSlide {
   to { opacity: 1; transform: translateY(0); }
 }
+
+#preview-modal.show {
+  display: flex !important;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
