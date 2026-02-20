@@ -154,6 +154,20 @@
       <input type="file" id="image-input" accept="image/*" style="display:none;">
       <!-- Botão customizado para enviar imagem -->
       <button type="button" id="image-btn">📎 Enviar Imagem</button>
+
+      <button id="new-messages-btn" style="
+    display:none;
+    position:absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background:#00ffaa;
+    border:none;
+    padding:6px 12px;
+    border-radius:5px;
+    cursor:pointer;
+    z-index:1000;
+">Novas mensagens</button>
     </div>
   </form>
 </div>
@@ -329,6 +343,25 @@ document.addEventListener('DOMContentLoaded', () => {
     set(ref(db, `typing/${username}`), false);
   });
 
+  const newMessagesBtn = document.getElementById('new-messages-btn');
+let isAtBottom = true;
+
+// Detecta se o usuário está no fim do chat
+messagesArea.addEventListener('scroll', () => {
+  const scrollPosition = messagesArea.scrollTop + messagesArea.clientHeight;
+  const scrollHeight = messagesArea.scrollHeight;
+  
+  isAtBottom = scrollHeight - scrollPosition < 20; // margem de 20px
+  if (isAtBottom) newMessagesBtn.style.display = 'none';
+});
+
+
+// Ao clicar no botão "Novas mensagens"
+newMessagesBtn.addEventListener('click', () => {
+  messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+  newMessagesBtn.style.display = 'none';
+});
+
   // 📥 Receber mensagens
 onChildAdded(messagesRef, (data) => {
   const msg = data.val();
@@ -428,7 +461,11 @@ previewModal.addEventListener('click', (e) => {
 });
 
   messagesArea.appendChild(messageElement);
+  if (isAtBottom) {
   messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+} else {
+  newMessagesBtn.style.display = 'block';
+}
 });
 
   // ✍️ Digitando
