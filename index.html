@@ -135,10 +135,24 @@
 </style>
 </head>
 <body>
-<div class="chat-container">
+<!-- Tela inicial de senha -->
+<div id="home-screen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background-color:#000; color:#fff;">
+
+  <!-- Input e botão inicialmente escondidos -->
+  <div id="password-container" style="display:none; margin-top:10px; text-align:center;">
+    <input type="password" id="chat-password" placeholder="Digite a senha" style="padding:10px; border-radius:5px; border:none; margin-top:10px;">
+    <button id="enter-btn" style="margin-top:15px; padding:8px 15px; border-radius:5px; border:none; background-color:#00baaebd; color:#000; font-weight:bold; cursor:pointer;">Entrar</button>
+  </div>
+
+  <!-- Cadeado para desbloquear -->
+  <div id="lock-btn" style="font-size:2rem; cursor:pointer; margin-top:10px;">🔒</div>
+</div>
+
+<!-- Chat real, escondido até senha correta -->
+<div class="chat-container" id="chat-screen" style="display:none;">
   <header>
-  <h1 id="chat-title" class="dancing">Chat</h1>
-</header>
+    <h1 id="chat-title" class="dancing">Chat</h1>
+  </header>
 
   <div id="chat-messages" class="messages-area"></div>
   <div id="typing-indicator"></div>
@@ -147,12 +161,10 @@
     <input type="text" id="username" placeholder="Seu nome">
     <div class="input-group">
       <input type="text" id="message-input" placeholder="Digite sua mensagem...">
-      <button type="submit">Enviar</button><button type="button" id="nudge-btn">⚡</button>
+      <button type="submit">Enviar</button>
+      <button type="button" id="nudge-btn">⚡</button>
       <button type="button" id="record-btn">🎤 Gravar</button>
-
-      <!-- Input escondido para imagens -->
       <input type="file" id="image-input" accept="image/*" style="display:none;">
-      <!-- Botão customizado para enviar imagem -->
       <button type="button" id="image-btn">📎 Enviar Imagem</button>
     </div>
   </form>
@@ -171,6 +183,53 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "http
 import { getDatabase, ref, push, onChildAdded, serverTimestamp, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 document.addEventListener('DOMContentLoaded', () => {
+
+// 🔑 Área privada com senha
+const lockBtn = document.getElementById("lock-btn");
+const passwordContainer = document.getElementById("password-container");
+const enterBtn = document.getElementById("enter-btn");
+const passwordInput = document.getElementById("chat-password");
+const homeScreen = document.getElementById("home-screen");
+const chatScreen = document.getElementById("chat-screen");
+
+const CHAT_PASSWORD = "bronze";
+const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+// Mostrar input de senha ao clicar no cadeado
+lockBtn.addEventListener("click", () => {
+  passwordContainer.style.display = "block";
+});
+
+// Entrar no chat
+enterBtn.addEventListener("click", () => {
+  if (passwordInput.value === CHAT_PASSWORD) {
+    homeScreen.style.display = "none";
+    chatScreen.style.display = "flex";
+    localStorage.setItem("chat_auth_time", Date.now());
+  } else {
+    alert("Senha incorreta");
+  }
+});
+
+// 🔹 Entrar no chat
+enterBtn.addEventListener("click", () => {
+  if(passwordInput.value === CHAT_PASSWORD) {
+    homeScreen.style.display = "none";
+    chatScreen.style.display = "flex";
+    localStorage.setItem("chat_auth_time", Date.now());
+  } else {
+    alert("Senha incorreta");
+  }
+});
+
+// Login persistente
+const savedTime = localStorage.getItem("chat_auth_time");
+if (savedTime && Date.now() - savedTime < TWELVE_HOURS) {
+  homeScreen.style.display = "none";
+  chatScreen.style.display = "flex";
+} else {
+  localStorage.removeItem("chat_auth_time");
+}
 
   // 🔔 Sons
   const notificationSound = new Audio('som.mp3');
