@@ -200,16 +200,6 @@ lockBtn.addEventListener("click", () => {
   passwordContainer.style.display = "block";
 });
 
-// Entrar no chat
-enterBtn.addEventListener("click", () => {
-  if (passwordInput.value === CHAT_PASSWORD) {
-    homeScreen.style.display = "none";
-    chatScreen.style.display = "flex";
-    localStorage.setItem("chat_auth_time", Date.now());
-  } else {
-    alert("Senha incorreta");
-  }
-});
 
 // 🔹 Entrar no chat
 enterBtn.addEventListener("click", () => {
